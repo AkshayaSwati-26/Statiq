@@ -1,0 +1,53 @@
+# requirements.txt — mospi-platform (merged with mospi-security)
+# Run: pip install -r requirements.txt
+# Security audit: pip-audit -r requirements.txt
+
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+starlette==0.37.2
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.31
+psycopg2-binary==2.9.9      # PostgreSQL driver
+alembic==1.13.2              # DB migrations
+
+# ── Auth & Cryptography ────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0   # JWT RS256
+argon2-cffi==23.1.0                # Argon2id password hashing
+cryptography==43.0.0               # RSA key generation
+
+# ── Rate limiting & caching ────────────────────────────────────────────────────
+redis==5.0.8
+hiredis==3.0.0               # faster Redis parser
+
+# ── Data processing ────────────────────────────────────────────────────────────
+pandas==2.2.2
+numpy==1.26.4
+
+# ── Validation ─────────────────────────────────────────────────────────────────
+pydantic==2.8.2
+pydantic-settings==2.4.0
+email-validator==2.2.0
+
+# ── AI integration ─────────────────────────────────────────────────────────────
+anthropic==0.34.0
+
+# ── Config ─────────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── HTTP client ────────────────────────────────────────────────────────────────
+requests==2.32.0
+
+# ── Data quality ───────────────────────────────────────────────────────────────
+great-expectations==0.18.0
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+pytest==8.3.2
+pytest-asyncio==0.23.8
+httpx==0.27.0                # async test client for FastAPI
+pytest-cov==5.0.0
+
+# ── Security scanning (dev/CI only) ────────────────────────────────────────────
+# pip-audit            # run: pip-audit -r requirements.txt
+# bandit               # run: bandit -r . -ll

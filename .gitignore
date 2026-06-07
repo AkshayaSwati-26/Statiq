@@ -5,7 +5,11 @@ __pycache__/
 data/raw/
 data/processed/
 *.csv
-*.txt
 node_modules/
 dist/
 .DS_Store
+
+# Security — never commit private keys or audit logs
+keys/
+logs/
+*.pem
