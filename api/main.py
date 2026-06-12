@@ -109,10 +109,13 @@ app.add_middleware(
 
 # ── ROUTERS ────────────────────────────────────────────────────────────────────
 try:
-    from api.routers import auth, indicators, query
+    from api.routers import auth, indicators, query, metadata_router, relationship_router, suggestions_router
     app.include_router(auth.router)
     app.include_router(indicators.router)
     app.include_router(query.router)
+    app.include_router(metadata_router.router)
+    app.include_router(relationship_router.router)
+    app.include_router(suggestions_router.router)
 except ImportError as e:
     logger.warning(f"Some routers not yet implemented: {e}")
 

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
+from security.auth import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +50,13 @@ mock_hces = pd.DataFrame({
 })
 
 # ── MOCK USERS TABLE ──────────────────────────────────────────────────────────
-# Pre-hashed passwords using Argon2id — DO NOT use real passwords here
+# Pre-hashed passwords using Argon2id
 mock_users = pd.DataFrame({
     "user_id":       ["admin", "researcher1", "public1"],
     "password_hash": [
-        # These are placeholder hashes — real system generates via hash_password()
-        "$argon2id$v=19$m=65536,t=3,p=4$placeholder$placeholder",
-        "$argon2id$v=19$m=65536,t=3,p=4$placeholder$placeholder",
-        "$argon2id$v=19$m=65536,t=3,p=4$placeholder$placeholder",
+        hash_password("AdminPassword123!"),
+        hash_password("ResearchPassword123!"),
+        hash_password("PublicPassword123!"),
     ],
     "scope":         ["admin", "research", "public"],
     "is_active":     [True, True, True],
