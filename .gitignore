@@ -6,6 +6,9 @@ data/raw/
 data/processed/
 *.csv
 *.txt
+!requirements.txt
 node_modules/
 dist/
 .DS_Store
+.pytest_cache/
+*.log
