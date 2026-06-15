@@ -2,8 +2,12 @@
 .venv/
 __pycache__/
 *.pyc
-data/raw/
-data/processed/
+data/raw/**
+!data/raw/**/
+!data/raw/**/*.gitkeep
+data/processed/**
+!data/processed/**/
+!data/processed/**/*.gitkeep
 *.csv
 node_modules/
 dist/
@@ -13,3 +17,9 @@ dist/
 keys/
 logs/
 *.pem
+
+# Data Layer ignores
+*.txt
+!requirements.txt
+.pytest_cache/
+*.log
