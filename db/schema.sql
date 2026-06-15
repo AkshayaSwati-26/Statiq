@@ -368,3 +368,64 @@ CREATE INDEX IF NOT EXISTS idx_meta_samples_col ON survey_metadata_samples(surve
 CREATE INDEX IF NOT EXISTS idx_meta_prof_tbl ON survey_metadata_profiles(survey_id, table_name);
 CREATE INDEX IF NOT EXISTS idx_meta_queries_survey ON survey_metadata_suggested_queries(survey_id);
 
+-- ── INTEGRATION VIEWS FOR OTHER LAYERS (AI & API) ─────────────
+-- Bridges our schema to the exact queries expected by other teams
+
+CREATE OR REPLACE VIEW metadata_registry AS
+SELECT 
+    c.table_name, 
+    c.column_name, 
+    c.data_type, 
+    c.description, 
+    s.sample_values::TEXT AS sample_values
+FROM survey_metadata_columns c
+LEFT JOIN survey_metadata_samples s 
+    ON c.survey_id = s.survey_id 
+    AND c.table_name = s.table_name 
+    AND c.column_name = s.column_name;
+
+CREATE OR REPLACE VIEW relationship_registry AS
+SELECT 
+    parent_table, 
+    child_table, 
+    join_keys[1] AS join_key,
+    relationship_type
+FROM survey_metadata_relationships;
+
+CREATE OR REPLACE VIEW suggested_query_registry AS
+SELECT 
+    title AS question, 
+    sql_query, 
+    COALESCE(description, 'general') AS category
+FROM survey_metadata_suggested_queries;
+
+CREATE OR REPLACE VIEW data_dictionary AS
+SELECT 
+    table_name, 
+    column_name, 
+    description AS definition
+FROM survey_metadata_columns;
+
+CREATE OR REPLACE VIEW dataset_profile AS
+SELECT 
+    'row_count' AS profile_key, 
+    row_count::TEXT AS profile_value
+FROM survey_metadata_profiles
+UNION ALL
+SELECT 
+    'column_count' AS profile_key, 
+    column_count::TEXT AS profile_value
+FROM survey_metadata_profiles
+UNION ALL
+SELECT 
+    'missing_values' AS profile_key, 
+    missing_values::TEXT AS profile_value
+FROM survey_metadata_profiles;
+
+CREATE OR REPLACE VIEW sensitive_column_registry AS
+SELECT 
+    table_name, 
+    column_name, 
+    CASE WHEN is_sensitive THEN 'high' ELSE 'low' END AS sensitivity_level
+FROM survey_metadata_columns;
+
