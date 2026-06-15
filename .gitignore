@@ -2,8 +2,12 @@
 .venv/
 __pycache__/
 *.pyc
-data/raw/
-data/processed/
+data/raw/**
+!data/raw/**/
+!data/raw/**/*.gitkeep
+data/processed/**
+!data/processed/**/
+!data/processed/**/*.gitkeep
 *.csv
 *.txt
 !requirements.txt
