@@ -109,6 +109,64 @@ with engine.begin() as conn:
         GROUP BY state_code, sector, survey_year
     """))
 
+    # Privacy-safe views mapping for SQLite integration tests
+    conn.execute(text("""
+        CREATE VIEW IF NOT EXISTS api_plfs_person AS
+        SELECT
+            CAST(state_code AS TEXT) AS state_name,
+            CASE WHEN sector = 1 THEN 'Rural' ELSE 'Urban' END AS sector_label,
+            age,
+            CASE WHEN age >= 15 THEN '15+' ELSE '0-14' END AS age_group,
+            CASE WHEN sex = 1 THEN 'Male' ELSE 'Female' END AS gender_label,
+            'Secondary' AS education_label,
+            'Employed' AS activity_label,
+            usual_activity_status AS employment_status,
+            CASE WHEN usual_activity_status <= 82 THEN 1 ELSE 0 END AS in_labour_force,
+            CASE WHEN usual_activity_status <= 72 THEN 1 ELSE 0 END AS is_employed,
+            CASE WHEN age >= 15 THEN 1 ELSE 0 END AS working_age,
+            multiplier,
+            survey_year
+        FROM plfs_person
+    """))
+
+    conn.execute(text("""
+        CREATE VIEW IF NOT EXISTS api_hces_members AS
+        SELECT
+            CAST(state_code AS TEXT) AS state_name,
+            CASE WHEN sector = 1 THEN 'Rural' ELSE 'Urban' END AS sector_label,
+            'Male' AS gender_label,
+            30 AS age,
+            '15-59' AS age_group,
+            'Primary' AS education_label,
+            'None' AS insurance_label,
+            0 AS hospitalised,
+            0 AS hosp_times,
+            0 AS chronic_ailment,
+            0 AS ailment_15d,
+            0 AS vaccine_received,
+            multiplier,
+            survey_year
+        FROM hces_household
+    """))
+
+    conn.execute(text("""
+        CREATE VIEW IF NOT EXISTS api_hces_hosp AS
+        SELECT
+            CAST(state_code AS TEXT) AS state_name,
+            CASE WHEN sector = 1 THEN 'Rural' ELSE 'Urban' END AS sector_label,
+            30 AS age_years,
+            'General' AS ailment_label,
+            'Public' AS institution_label,
+            5 AS stay_days,
+            5000 AS total_expense,
+            0 AS reimbursed,
+            5000 AS out_of_pocket,
+            'Self' AS finance_label,
+            multiplier,
+            survey_year
+        FROM hces_household
+    """))
+
 logger.info(
     f"Mock DB ready — "
     f"{len(mock_plfs):,} PLFS rows, "

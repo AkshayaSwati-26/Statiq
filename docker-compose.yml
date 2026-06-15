@@ -173,9 +173,47 @@ services:
       - ../src:/opt/airflow/statiq_src
       - airflow_logs:/opt/airflow/logs
     command: scheduler
+  # ── 5. AI Layer - Ollama Engine ─────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: statiq-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+  # ── 6. Backend API Layer ────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: statiq-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://statiq:statiq123@postgres:5432/statiq
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_HOST=http://ollama:11434
+      - JWT_SECRET=test-secret-at-least-32-chars-long!!
+      - RSA_PRIVATE_KEY_PATH=keys/private.pem
+      - RSA_PUBLIC_KEY_PATH=keys/public.pem
+      - ALLOWED_ORIGINS=http://localhost:5173
+      - ALLOWED_HOSTS=localhost,127.0.0.1,api
+      - FORCE_HTTPS=false
+      - AUDIT_LOG_PATH=/tmp/mospi_api_audit.jsonl
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   airflow_logs:
+  ollama_models:
