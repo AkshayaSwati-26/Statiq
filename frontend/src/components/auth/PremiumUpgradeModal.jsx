@@ -8,25 +8,84 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
   const user = useSession(state => state.user)
   const loginUser = useSession(state => state.loginUser)
   
-  const [step, setStep] = useState(0) // 0 = comparison, 1 = upgrading (logs), 2 = success
+  const [step, setStep] = useState(0) // 0 = comparison, 1 = upgrading (logs), 2 = success, 3 = checkout
   const [logs, setLogs] = useState([])
   const [error, setError] = useState('')
+
+  // Payment mock states
+  const [paymentMethod, setPaymentMethod] = useState('card')
+  const [cardNo, setCardNo] = useState('')
+  const [expiry, setExpiry] = useState('')
+  const [cvv, setCvv] = useState('')
+  const [cardName, setCardName] = useState('')
+  const [selectedBank, setSelectedBank] = useState('')
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
 
   useEffect(() => {
     if (!isOpen) {
       setStep(0)
       setLogs([])
       setError('')
+      setPaymentMethod('card')
+      setCardNo('')
+      setExpiry('')
+      setCvv('')
+      setCardName('')
+      setSelectedBank('')
+      setIsProcessingPayment(false)
+      setPaymentError('')
     }
   }, [isOpen])
 
   if (!isOpen) return null
+
+  const handlePaymentSubmit = async () => {
+    setPaymentError('')
+    setIsProcessingPayment(true)
+
+    // Basic Validation simulation
+    if (paymentMethod === 'card') {
+      if (!cardName.trim() || !cardNo.trim() || !expiry.trim() || !cvv.trim()) {
+        setPaymentError('// ERROR: All credit card details are required.')
+        setIsProcessingPayment(false)
+        return
+      }
+      if (cardNo.replace(/\s/g, '').length < 16) {
+        setPaymentError('// ERROR: Invalid card number.')
+        setIsProcessingPayment(false)
+        return
+      }
+      if (expiry.length < 5) {
+        setPaymentError('// ERROR: Invalid expiry format (MM/YY).')
+        setIsProcessingPayment(false)
+        return
+      }
+      if (cvv.length < 3) {
+        setPaymentError('// ERROR: CVV must be 3 digits.')
+        setIsProcessingPayment(false)
+        return
+      }
+    } else if (paymentMethod === 'netbank') {
+      if (!selectedBank) {
+        setPaymentError('// ERROR: Please select an active net banking institution.')
+        setIsProcessingPayment(false)
+        return
+      }
+    }
+
+    // Process payment simulation
+    await new Promise(r => setTimeout(r, 1500))
+    setIsProcessingPayment(false)
+    runUpgrade()
+  }
 
   const runUpgrade = async () => {
     setStep(1)
     setError('')
     
     const steps = [
+      '// DECRYPTING TRANSACTION SECURE BLOCK...',
       '// CONNECTING TO MoSPI SECURE VAULT...',
       '// GENERATING RESEARCHER CERTIFICATE...',
       '// UPDATING DATABASE PRIVILEGES (PUBLIC -> RESEARCH)...',
@@ -222,7 +281,7 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
                 Cancel
               </button>
               <button
-                onClick={runUpgrade}
+                onClick={() => setStep(3)}
                 style={{
                   padding: '10px 24px',
                   background: 'linear-gradient(90deg, #22d3ee, #0891b2)',
@@ -239,6 +298,238 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
                 onMouseLeave={e => e.target.style.boxShadow = '0 0 15px rgba(34, 211, 238, 0.3)'}
               >
                 Activate Premium clearance
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div>
+                <div style={{ fontSize: 9, color: 'rgba(34, 211, 238, 0.9)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>
+                  // SECURE GATEWAY PROTOCOL
+                </div>
+                <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: '#f1f5f9', margin: 0 }}>
+                  Escrow Checkout
+                </h3>
+              </div>
+              <button 
+                onClick={onClose} 
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 16 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Price banner */}
+            <div style={{
+              background: 'rgba(34, 211, 238, 0.05)',
+              border: '1px solid rgba(34, 211, 238, 0.2)',
+              padding: '16px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#f1f5f9', fontWeight: 700 }}>Premium Analyst Clearance</div>
+                <div style={{ fontSize: 9, color: 'rgba(34, 211, 238, 0.7)', marginTop: 4 }}>Annual Cryptographic License</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#22d3ee' }}>₹2,499 / yr</div>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>inclusive of all taxes</div>
+              </div>
+            </div>
+
+            {/* Payment tab buttons */}
+            <div style={{ display: 'flex', gap: 2, background: 'rgba(0,0,0,0.2)', padding: 3, marginBottom: 20 }}>
+              {[
+                { id: 'card', label: '💳 Credit/Debit' },
+                { id: 'upi', label: '📱 UPI QR' },
+                { id: 'netbank', label: '🏦 Net Banking' }
+              ].map(method => (
+                <button
+                  key={method.id}
+                  onClick={() => {
+                    setPaymentMethod(method.id)
+                    setPaymentError('')
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    fontSize: 10,
+                    fontFamily: "'Space Mono', monospace",
+                    background: paymentMethod === method.id ? 'rgba(34, 211, 238, 0.1)' : 'transparent',
+                    border: '1px solid ' + (paymentMethod === method.id ? 'rgba(34, 211, 238, 0.3)' : 'transparent'),
+                    color: paymentMethod === method.id ? '#22d3ee' : 'rgba(148, 163, 184, 0.8)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                  }}
+                >
+                  {method.label}
+                </button>
+              ))}
+            </div>
+
+            {paymentError && (
+              <div style={{
+                fontSize: 11,
+                color: '#ef4444',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                padding: '8px 12px',
+                marginBottom: 16,
+              }}>
+                {paymentError}
+              </div>
+            )}
+
+            {/* Tab contents */}
+            <div style={{ minHeight: 180, marginBottom: 24 }}>
+              {paymentMethod === 'card' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>CARDHOLDER NAME</label>
+                    <input 
+                      value={cardName}
+                      onChange={e => setCardName(e.target.value)}
+                      placeholder="Anant R." 
+                      className="iris-input" 
+                      style={{ width: '100%', fontSize: 12, padding: '8px 12px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>CARD NUMBER</label>
+                    <input 
+                      value={cardNo}
+                      onChange={e => setCardNo(e.target.value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19))}
+                      placeholder="4111 2222 3333 4444" 
+                      className="iris-input" 
+                      style={{ width: '100%', fontSize: 12, padding: '8px 12px' }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>EXPIRY DATE</label>
+                      <input 
+                        value={expiry}
+                        onChange={e => setExpiry(e.target.value.replace(/\D/g, '').replace(/(\d{2})/, '$1/').substring(0, 5))}
+                        placeholder="MM/YY" 
+                        className="iris-input" 
+                        style={{ width: '100%', fontSize: 12, padding: '8px 12px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>CVV</label>
+                      <input 
+                        type="password"
+                        value={cvv}
+                        onChange={e => setCvv(e.target.value.replace(/\D/g, '').substring(0, 3))}
+                        placeholder="***" 
+                        className="iris-input" 
+                        style={{ width: '100%', fontSize: 12, padding: '8px 12px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'upi' && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+                  <div style={{
+                    background: '#fff',
+                    padding: 12,
+                    border: '1px solid rgba(34, 211, 238, 0.4)',
+                    boxShadow: '0 0 15px rgba(34, 211, 238, 0.2)',
+                    marginBottom: 12,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                  }}>
+                    <div style={{ width: 120, height: 120, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                      <div style={{ width: 100, height: 100, border: '4px double #22d3ee', display: 'flex', flexWrap: 'wrap' }}>
+                        {Array.from({ length: 9 }).map((_, i) => (
+                          <div key={i} style={{ width: 33, height: 33, border: '1px solid rgba(34,211,238,0.25)', background: (i % 2 === 0 || i === 7) ? '#22d3ee' : 'transparent' }} />
+                        ))}
+                      </div>
+                      <div style={{ position: 'absolute', width: 28, height: 28, background: '#fff', border: '2px solid #22d3ee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#010812', fontWeight: 900 }}>UPI</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(148, 163, 184, 0.8)', textAlign: 'center', lineHeight: '1.5em' }}>
+                    Scan this QR code using any UPI app (BHIM, Google Pay, PhonePe, Paytm)<br />
+                    <span style={{ color: '#22d3ee', fontWeight: 700 }}>Simulated payment auto-resolves after scanning</span>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'netbank' && (
+                <div>
+                  <label style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 10 }}>SELECT YOUR BANK</label>
+                  <select 
+                    value={selectedBank}
+                    onChange={e => setSelectedBank(e.target.value)}
+                    className="iris-input"
+                    style={{ width: '100%', fontSize: 12, padding: '10px 12px', background: 'rgba(1, 8, 18, 0.8)' }}
+                  >
+                    <option value="">-- Choose Bank --</option>
+                    <option value="sbi">State Bank of India</option>
+                    <option value="hdfc">HDFC Bank</option>
+                    <option value="icici">ICICI Bank</option>
+                    <option value="axis">Axis Bank</option>
+                    <option value="kotak">Kotak Mahindra Bank</option>
+                  </select>
+                  <div style={{ fontSize: 10, color: 'rgba(148, 163, 184, 0.7)', marginTop: 12, lineHeight: '1.5em' }}>
+                    You will be redirected to the bank's secure authorization portal.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Checkout actions */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setStep(0)}
+                style={{
+                  padding: '10px 20px',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Back
+              </button>
+              <button
+                onClick={handlePaymentSubmit}
+                disabled={isProcessingPayment}
+                style={{
+                  padding: '10px 24px',
+                  background: 'linear-gradient(90deg, #22d3ee, #0891b2)',
+                  border: 'none',
+                  color: '#010812',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  boxShadow: '0 0 15px rgba(34, 211, 238, 0.3)',
+                  transition: 'all 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                {isProcessingPayment ? (
+                  <>
+                    <div style={{ width: 12, height: 12, border: '2px solid rgba(1, 8, 18, 0.2)', borderTopColor: '#010812', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}></div>
+                    Authorizing...
+                  </>
+                ) : (
+                  'Confirm Payment & Proceed'
+                )}
               </button>
             </div>
           </div>
