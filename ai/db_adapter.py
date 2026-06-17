@@ -32,29 +32,41 @@ class AIContextRepository:
             params["survey_id"] = survey_id
         
         results = self._execute_query(query, params)
-        if results is None:
+        if not results:
             # Fallback mock
             return [
-                {
-                    "table_name": "plfs_person",
-                    "column_name": "usual_activity_status",
-                    "data_type": "integer",
-                    "description": "Principal activity status code",
-                    "sample_values": "[11, 21, 31, 81, 82]"
-                }
+                {"table_name": "api_plfs_person", "column_name": "state_name", "data_type": "varchar", "description": "State name", "sample_values": '["Tamil Nadu", "Kerala"]'},
+                {"table_name": "api_plfs_person", "column_name": "sector_label", "data_type": "varchar", "description": "Rural or Urban", "sample_values": '["Rural", "Urban"]'},
+                {"table_name": "api_plfs_person", "column_name": "gender_label", "data_type": "varchar", "description": "Gender", "sample_values": '["Male", "Female"]'},
+                {"table_name": "api_plfs_person", "column_name": "age", "data_type": "integer", "description": "Age in years", "sample_values": "[25, 45]"},
+                {"table_name": "api_plfs_person", "column_name": "usual_activity", "data_type": "varchar", "description": "Usual activity status code", "sample_values": '["11", "51", "81"]'},
+                {"table_name": "api_plfs_person", "column_name": "employment_status", "data_type": "varchar", "description": "Employed, Unemployed, or Out of Labour Force", "sample_values": '["Employed", "Unemployed"]'},
+                {"table_name": "api_plfs_person", "column_name": "in_labour_force", "data_type": "integer", "description": "1 if in labour force, 0 otherwise", "sample_values": "[0, 1]"},
+                {"table_name": "api_plfs_person", "column_name": "is_employed", "data_type": "integer", "description": "1 if employed, 0 otherwise", "sample_values": "[0, 1]"},
+                {"table_name": "api_plfs_person", "column_name": "multiplier", "data_type": "numeric", "description": "Survey weight multiplier", "sample_values": "[1200.5]"},
+                {"table_name": "api_plfs_person", "column_name": "survey_year", "data_type": "varchar", "description": "Survey year", "sample_values": '["2023-24"]'},
+                
+                {"table_name": "api_hces_members", "column_name": "state_name", "data_type": "varchar", "description": "State name", "sample_values": '["Tamil Nadu", "Kerala"]'},
+                {"table_name": "api_hces_members", "column_name": "sector_label", "data_type": "varchar", "description": "Rural or Urban", "sample_values": '["Rural", "Urban"]'},
+                {"table_name": "api_hces_members", "column_name": "gender_label", "data_type": "varchar", "description": "Gender", "sample_values": '["Male", "Female"]'},
+                {"table_name": "api_hces_members", "column_name": "age", "data_type": "integer", "description": "Age in years", "sample_values": "[25, 45]"},
+                {"table_name": "api_hces_members", "column_name": "hospitalised", "data_type": "integer", "description": "1 if hospitalised in last 365 days, 0 otherwise", "sample_values": "[0, 1]"},
+                {"table_name": "api_hces_members", "column_name": "insurance_label", "data_type": "varchar", "description": "Health insurance coverage", "sample_values": '["AB-PMJAY", "Not covered"]'},
+                {"table_name": "api_hces_members", "column_name": "multiplier", "data_type": "numeric", "description": "Survey weight multiplier", "sample_values": "[1200.5]"},
+                {"table_name": "api_hces_members", "column_name": "survey_year", "data_type": "varchar", "description": "Survey year", "sample_values": '["2023-24"]'}
             ]
         return results
 
     def get_relationship_registry(self):
         query = "SELECT parent_table, child_table, join_key, relationship_type FROM relationship_registry"
         results = self._execute_query(query)
-        if results is None:
+        if not results:
             # Fallback mock
             return [
                 {
-                    "parent_table": "plfs_household",
-                    "child_table": "plfs_person",
-                    "join_key": "household_id",
+                    "parent_table": "api_hces_hh",
+                    "child_table": "api_hces_members",
+                    "join_key": "hh_serial",
                     "relationship_type": "one_to_many"
                 }
             ]
@@ -77,8 +89,12 @@ class AIContextRepository:
     def get_data_dictionary(self):
         query = "SELECT table_name, column_name, definition FROM data_dictionary"
         results = self._execute_query(query)
-        if results is None:
-            return [{"table_name": "plfs_person", "column_name": "sector", "definition": "1 for rural, 2 for urban"}]
+        if not results:
+            return [
+                {"table_name": "api_plfs_person", "column_name": "sector", "definition": "1 for rural, 2 for urban"},
+                {"table_name": "api_plfs_person", "column_name": "gender", "definition": "1 for male, 2 for female"},
+                {"table_name": "api_hces_members", "column_name": "gender", "definition": "1 for male, 2 for female"}
+            ]
         return results
 
     def get_dataset_profile(self):

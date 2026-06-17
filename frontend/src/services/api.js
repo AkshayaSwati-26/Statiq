@@ -3,6 +3,7 @@ import {
   USE_MOCK_UPLOAD, USE_MOCK_QUERY,
   MOCK_UPLOAD, MOCK_HCES_UPLOAD, MOCK_QUERY_RESULT
 } from '../utils/mockData'
+import { getErrorMessage } from '../utils/errors'
 
 const BASE = 'http://localhost:8000'
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
@@ -31,8 +32,7 @@ export const uploadDataset = async (file) => {
     })
     return res.data
   } catch (err) {
-    const detail = err.response?.data?.detail || 'Upload failed'
-    throw new Error(detail)
+    throw new Error(getErrorMessage(err, 'Upload failed'))
   }
 }
 

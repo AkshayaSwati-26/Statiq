@@ -29,10 +29,10 @@ ARGON2_PARALLELISM      = 4           # threads
 ARGON2_HASH_LEN         = 32          # output bytes
 ARGON2_SALT_LEN         = 16          # random salt bytes
 
-MIN_PASSWORD_LENGTH     = 12
+MIN_PASSWORD_LENGTH     = 6
 MAX_PASSWORD_LENGTH     = 128
 # Passwords must contain uppercase, lowercase, digit, and special char
-PASSWORD_REGEX          = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+])[A-Za-z\d@$!%*?&#^()_+]{12,128}$"
+PASSWORD_REGEX          = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+])[A-Za-z\d@$!%*?&#^()_+]{6,128}$"
 
 # ── RATE LIMITING ──────────────────────────────────────────────────────────────
 # Three-tier limits: by IP (unauthenticated), by user+scope (authenticated),

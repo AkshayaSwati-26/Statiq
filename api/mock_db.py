@@ -52,11 +52,11 @@ mock_hces = pd.DataFrame({
 # ── MOCK USERS TABLE ──────────────────────────────────────────────────────────
 # Pre-hashed passwords using Argon2id
 mock_users = pd.DataFrame({
-    "user_id":       ["admin", "researcher1", "public1"],
+    "user_id":       ["admin", "analyst", "student"],
     "password_hash": [
         hash_password("AdminPassword123!"),
-        hash_password("ResearchPassword123!"),
-        hash_password("PublicPassword123!"),
+        hash_password("AdminPassword123!"),
+        hash_password("AdminPassword123!"),
     ],
     "scope":         ["admin", "research", "public"],
     "is_active":     [True, True, True],

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../../hooks/useSession'
 import axios from 'axios'
 import { USE_MOCK_UPLOAD } from '../../utils/mockData'
+import { getErrorMessage } from '../../utils/errors'
 
 export default function PremiumUpgradeModal({ isOpen, onClose }) {
   const user = useSession(state => state.user)
@@ -49,7 +50,7 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
           )
           scope = res.data.scope
         } catch (err) {
-          setError(err.response?.data?.detail || '// ERROR: Privilege escalation rejected by server')
+          setError(getErrorMessage(err, '// ERROR: Privilege escalation rejected by server'))
           setStep(0)
           setLogs([])
           return

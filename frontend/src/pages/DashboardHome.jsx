@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useSession } from '../hooks/useSession'
 import { MOCK_DASHBOARD_STATS } from '../utils/mockData'
 import { uploadDataset } from '../services/api'
+import { getErrorMessage } from '../utils/errors'
 
 const S = MOCK_DASHBOARD_STATS
 
@@ -42,7 +43,7 @@ export default function DashboardHome() {
       const result = await uploadDataset(mockFile)
       setDataset(result)
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Access Denied: You do not have permission to access this dataset.')
+      setErrorMsg(getErrorMessage(err, 'Access Denied: You do not have permission to access this dataset.'))
     } finally {
       setLoadingDataset(false)
     }

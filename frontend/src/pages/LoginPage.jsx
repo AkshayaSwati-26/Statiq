@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { USE_MOCK_UPLOAD } from '../utils/mockData'
+import { getErrorMessage } from '../utils/errors'
 import axios from 'axios'
 
 /* ── Animated canvas: radar + floating data particles ── */
@@ -296,7 +297,7 @@ export default function LoginPage() {
             )
             scope = res.data.scope
           } catch (err) {
-            setError(err.response?.data?.detail || '// ERROR: Registration failed')
+            setError(getErrorMessage(err, '// ERROR: Registration failed'))
             setLoading(false)
             return
           }
@@ -339,7 +340,7 @@ export default function LoginPage() {
           )
           scope = res.data.scope
         } catch (err) {
-          setError(err.response?.data?.detail || '// ERROR: Invalid credentials')
+          setError(getErrorMessage(err, '// ERROR: Invalid credentials'))
           setLoading(false)
           return
         }

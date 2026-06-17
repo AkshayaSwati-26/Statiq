@@ -18,6 +18,32 @@ def clean_sql_parentheses(sql: str) -> str:
         sql = sql[:-1].strip()
     return sql
 
+def format_schema(schema: Dict[str, Any]) -> str:
+    lines = []
+    for table in schema.get("tables", []):
+        t_name = table["table_name"]
+        lines.append(f"Table {t_name}:")
+        for col in table.get("columns", []):
+            c_name = col["column_name"]
+            c_type = col["data_type"]
+            c_desc = col["description"]
+            sample_vals = col.get("sample_values", [])
+            sample_str = ", ".join([f"'{v}'" if isinstance(v, str) else str(v) for v in sample_vals])
+            lines.append(f"  - {c_name} ({c_type}): {c_desc}. E.g. {sample_str}")
+    return "\n".join(lines)
+
+def format_relationships(relationships: list) -> str:
+    lines = []
+    for rel in relationships:
+        lines.append(f"- {rel['parent_table']} joins {rel['child_table']} on {rel['join_key']} ({rel['relationship_type']})")
+    return "\n".join(lines)
+
+def format_data_dictionary(data_dict: list) -> str:
+    lines = []
+    for entry in data_dict:
+        lines.append(f"- {entry['table_name']}.{entry['column_name']}: {entry['definition']}")
+    return "\n".join(lines)
+
 def generate_sql(question: str) -> Dict[str, Any]:
     """
     Generate SQL query and explanation from a natural language question.
@@ -29,6 +55,10 @@ def generate_sql(question: str) -> Dict[str, Any]:
     # Get Ollama host from environment (defaulting to the service name in docker-compose)
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     
+    schema_str = format_schema(context.get('schema', {}))
+    relationships_str = format_relationships(context.get('relationships', []))
+    data_dict_str = format_data_dictionary(context.get('data_dictionary', []))
+    
     # Construct prompt
     prompt = f"""You are a natural language to SQL translation system for the MoSPI Survey Intelligence Platform.
 The platform database contains survey microdata from PLFS (Periodic Labour Force Survey) and HCES (Household Consumer Expenditure Survey).
@@ -36,18 +66,18 @@ The platform database contains survey microdata from PLFS (Periodic Labour Force
 Your task is to translate the user's natural language question into a single valid SQL SELECT query and provide a brief explanation.
 
 ### Database Schema Context:
-{json.dumps(context.get('schema', {}), indent=2)}
+{schema_str}
 
 ### Table Relationships (Joins):
-{json.dumps(context.get('relationships', []), indent=2)}
+{relationships_str}
 
 ### Data Dictionary & Code Definitions:
-{json.dumps(context.get('data_dictionary', []), indent=2)}
+{data_dict_str}
 
 ### Few-Shot Examples (Use these as reference patterns):
 """
-    for ex in context.get('examples', []):
-        prompt += f"\nQuestion: {ex['question']}\nSQL: {ex['sql_query']}\nCategory: {ex['category']}\n"
+    for ex in context.get('examples', [])[:2]:
+        prompt += f"\nQuestion: {ex['question']}\nSQL: {ex['sql_query']}\n"
         
     prompt += f"""
 ### User Question:
@@ -97,7 +127,7 @@ Return your response in this JSON format:
             }
 
     try:
-        response = requests.post(f"{ollama_host}/api/generate", headers=headers, json=payload, timeout=120)
+        response = requests.post(f"{ollama_host}/api/generate", headers=headers, json=payload, timeout=300)
         if response.status_code == 200:
             result_json = response.json()
             response_text = result_json.get("response", "").strip()

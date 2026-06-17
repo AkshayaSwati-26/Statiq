@@ -42,7 +42,7 @@ _INJECTION_PATTERNS = re.compile(
 
 class TokenRequest(BaseModel):
     user_id:  str  = Field(..., min_length=3, max_length=128)
-    password: str  = Field(..., min_length=12, max_length=128)
+    password: str  = Field(..., min_length=6, max_length=128)
     scope:    Literal["public", "research", "admin"] = "public"
 
     @field_validator("user_id")
@@ -173,7 +173,7 @@ class APIKeyCreateRequest(BaseModel):
 
 class SignupRequest(BaseModel):
     email:          str = Field(..., max_length=128)
-    password:       str = Field(..., min_length=12, max_length=128)
+    password:       str = Field(..., min_length=6, max_length=128)
     scope:          Literal["public", "admin"] = "public"
     admin_passcode: Optional[str] = Field(None, max_length=128)
 
