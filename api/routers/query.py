@@ -24,10 +24,7 @@ from security.validators import NLQueryRequest
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/query", tags=["query"])
 
-try:
-    from db.loader import engine
-except ImportError:
-    from api.mock_db import engine
+from db.loader import engine
 
 # ── Pydantic request model for direct SQL ─────────────────────────────────────
 from pydantic import BaseModel, Field
@@ -70,37 +67,15 @@ async def nl_query(
     translated       = False
 
     if body.language != "en":
-        try:
-            from ai.multilingual import translate_to_english
-            english_question = translate_to_english(body.question, body.language)
-            translated       = True
-        except ImportError:
-            logger.warning("Multilingual module not available — using question as-is")
-        except Exception as e:
-            logger.error(f"Translation failed: {e}")
-            raise HTTPException(
-                status_code=503,
-                detail=f"Translation service unavailable for language '{body.language}'"
-            )
+        from ai.multilingual import translate_to_english
+        english_question = translate_to_english(body.question, body.language)
+        translated       = True
 
-    # ── Step 2: NL → SQL via Claude (Member 3 delivers ai/nl_agent.py)
-    try:
-        from ai.nl_agent import generate_sql
-        nl_result = generate_sql(english_question)
-        raw_sql   = nl_result["sql"]
-        explain   = nl_result["explanation"]
-    except ImportError:
-        # Stub while AI layer is in development
-        logger.warning("AI module not available — using stub")
-        raw_sql = (
-            "SELECT state_code, sector, "
-            "ROUND(SUM(CASE WHEN usual_activity_status IN (81,82) "
-            "THEN multiplier ELSE 0 END) / NULLIF(SUM(multiplier),0)*100,2) "
-            "AS unemployment_rate "
-            "FROM plfs_person WHERE survey_year=2023 "
-            "GROUP BY state_code, sector LIMIT 500"
-        )
-        explain = "(Stub: AI layer not yet connected)"
+    # ── Step 2: NL → SQL via Claude
+    from ai.nl_agent import generate_sql
+    nl_result = generate_sql(english_question)
+    raw_sql   = nl_result["sql"]
+    explain   = nl_result["explanation"]
 
     # ── Step 3: SQL safety validation ────────────────────────────────────────
     try:

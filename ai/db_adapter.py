@@ -2,10 +2,7 @@ import logging
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-try:
-    from db.loader import engine
-except ImportError:
-    from api.mock_db import engine
+from db.loader import engine
 
 logger = logging.getLogger(__name__)
 

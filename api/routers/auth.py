@@ -37,13 +37,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/auth", tags=["authentication"])
 
 # ── DB engine (Member 1 delivers this — stub until Day 3) ─────────────────────
-try:
-    from db.loader import engine
-    _DB_AVAILABLE = True
-except ImportError:
-    from api.mock_db import engine
-    _DB_AVAILABLE = False
-    logger.warning("Using mock DB — replace with real engine when db/ is ready")
+from db.loader import engine
+_DB_AVAILABLE = True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

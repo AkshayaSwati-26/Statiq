@@ -23,11 +23,7 @@ from security.rate_limiter import _get_client_ip
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/indicators", tags=["indicators"])
 
-try:
-    from db.loader import engine
-except ImportError:
-    from api.mock_db import engine
-    logger.warning("Using mock DB for indicators")
+from db.loader import engine
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
