@@ -396,12 +396,13 @@ async def login(
         _update_password_hash(user_id, hash_password(body.password))
 
     # 7. Issue tokens
+    db_user_id    = user["user_id"]
     scope         = user["scope"]
-    access_token  = create_access_token(user_id, scope)
-    refresh_token, refresh_jti = create_refresh_token(user_id, scope)
+    access_token  = create_access_token(db_user_id, scope)
+    refresh_token, refresh_jti = create_refresh_token(db_user_id, scope)
 
     # 8. Store refresh JTI for revocation
-    _store_refresh_jti(user_id, refresh_jti)
+    _store_refresh_jti(db_user_id, refresh_jti)
 
     # 9. Set HttpOnly cookies
     set_auth_cookies(response, access_token, refresh_token)
