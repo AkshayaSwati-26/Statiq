@@ -318,13 +318,12 @@ class StatIQDB:
                 load_columns = [c for c in df_to_load.columns if c in db_columns]
                 df_to_load = df_to_load[load_columns]
                 log.info(f"[DB] Filtered to {len(load_columns)} matching columns for table {table_name}")
+            else:
+                log.info(f"[DB] Table {table_name} does not exist. Creating empty structure first.")
+                df_to_load.head(0).to_sql(table_name, self.engine, if_exists="replace", index=False)
 
-        # Use COPY for large datasets (much faster than INSERT for >50K rows)
-        if len(df_to_load) > 50_000 and table_exists:
-            self._copy_load(df_to_load, table_name)
-        else:
-            df_to_load.to_sql(table_name, self.engine, if_exists=if_exists,
-                              index=False, method="multi", chunksize=chunksize)
+        # Always use COPY for maximum speed (psycopg2 COPY is 10-100x faster than to_sql)
+        self._copy_load(df_to_load, table_name)
 
         elapsed = time.time() - t0
         log.info(f"[DB] {len(df):,} rows loaded in {elapsed:.1f}s "
