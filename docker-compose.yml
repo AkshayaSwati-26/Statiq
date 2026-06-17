@@ -112,7 +112,7 @@ services:
 
   airflow-init:
     build:
-      context: ..
+      context: .
       dockerfile: docker/airflow/Dockerfile
     container_name: statiq-airflow-init
     depends_on:
@@ -128,13 +128,13 @@ services:
       _AIRFLOW_WWW_USER_PASSWORD: admin
     command: version
     volumes:
-      - ../airflow/dags:/opt/airflow/dags
+      - ./airflow/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
-      - ../src:/opt/airflow/statiq_src
+      - .:/opt/airflow/statiq_src
 
   airflow-webserver:
     build:
-      context: ..
+      context: .
       dockerfile: docker/airflow/Dockerfile
     container_name: statiq-airflow-web
     restart: unless-stopped
@@ -149,14 +149,14 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ../airflow/dags:/opt/airflow/dags
-      - ../src:/opt/airflow/statiq_src
+      - ./airflow/dags:/opt/airflow/dags
+      - .:/opt/airflow/statiq_src
       - airflow_logs:/opt/airflow/logs
     command: webserver
 
   airflow-scheduler:
     build:
-      context: ..
+      context: .
       dockerfile: docker/airflow/Dockerfile
     container_name: statiq-airflow-scheduler
     restart: unless-stopped
@@ -169,8 +169,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       PYTHONPATH: "/opt/airflow/statiq_src"
     volumes:
-      - ../airflow/dags:/opt/airflow/dags
-      - ../src:/opt/airflow/statiq_src
+      - ./airflow/dags:/opt/airflow/dags
+      - .:/opt/airflow/statiq_src
       - airflow_logs:/opt/airflow/logs
     command: scheduler
   # ── 5. AI Layer - Ollama Engine ─────────────────────────────
@@ -203,6 +203,13 @@ services:
       - ALLOWED_HOSTS=localhost,127.0.0.1,api
       - FORCE_HTTPS=false
       - AUDIT_LOG_PATH=/tmp/mospi_api_audit.jsonl
+    volumes:
+      - ./api:/app/api
+      - ./security:/app/security
+      - ./ai:/app/ai
+      - ./db:/app/db
+      - ./keys:/app/keys
+
     depends_on:
       postgres:
         condition: service_healthy
