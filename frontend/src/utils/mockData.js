@@ -4,7 +4,7 @@
 //                             (set to false once Ollama/Claude is configured)
 export const USE_MOCK        = false   // legacy alias — not used directly anymore
 export const USE_MOCK_UPLOAD = false   // real upload endpoint
-export const USE_MOCK_QUERY  = true    // mock NL/SQL queries
+export const USE_MOCK_QUERY  = false    // mock NL/SQL queries
 
 export const MOCK_UPLOAD = {
   session_id: 'sess_001',

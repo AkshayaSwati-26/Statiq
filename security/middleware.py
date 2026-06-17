@@ -42,12 +42,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # ── Content Security Policy ───────────────────────────────────────────
         # API only — no inline scripts/styles needed at the API layer.
         # Frontend has its own (more permissive) CSP.
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; "
-            "frame-ancestors 'none'; "
-            "base-uri 'none'; "
-            "form-action 'none'"
-        )
+        if request.url.path in ("/docs", "/redoc", "/openapi.json"):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://fastapi.tiangolo.com; "
+                "frame-ancestors 'none'"
+            )
+        else:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'none'; "
+                "frame-ancestors 'none'; "
+                "base-uri 'none'; "
+                "form-action 'none'"
+            )
 
         # ── Permissions Policy — disable unneeded browser features ────────────
         response.headers["Permissions-Policy"] = (
