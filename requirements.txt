@@ -1,17 +1,16 @@
-# requirements.txt — mospi-platform (merged with mospi-security)
+# requirements.txt — MoSPI Platform (Unified Stack)
 # Run: pip install -r requirements.txt
-# Security audit: pip-audit -r requirements.txt
 
 # ── Web framework ──────────────────────────────────────────────────────────────
 fastapi==0.111.1
 uvicorn[standard]==0.30.1
 starlette==0.37.2
 
-# ── Database ───────────────────────────────────────────────────────────────────
+# ── Database & Storage ─────────────────────────────────────────────────────────
 sqlalchemy==2.0.31
 psycopg2-binary==2.9.9      # PostgreSQL driver
 alembic==1.13.2              # DB migrations
-minio==7.2.7
+minio==7.2.7                 # MinIO object storage
 
 # ── Auth & Cryptography ────────────────────────────────────────────────────────
 python-jose[cryptography]==3.3.0   # JWT RS256
@@ -29,17 +28,15 @@ pyarrow==16.0.0
 openpyxl==3.1.2
 pyspark==3.5.1
 
-# ── Validation ─────────────────────────────────────────────────────────────────
+# ── Validation & Config ────────────────────────────────────────────────────────
 pydantic==2.8.2
 pydantic-settings==2.4.0
 email-validator==2.2.0
+python-dotenv==1.0.1
+pyyaml==6.0.1
 
 # ── AI integration ─────────────────────────────────────────────────────────────
 anthropic==0.34.0
-
-# ── Config ─────────────────────────────────────────────────────────────────────
-python-dotenv==1.0.1
-pyyaml==6.0.1
 
 # ── HTTP client ────────────────────────────────────────────────────────────────
 requests==2.32.0
