@@ -14,6 +14,18 @@ const api = axios.create({
   withCredentials: true,   // send HttpOnly cookies automatically
 })
 
+// Auto-redirect to login when authentication expires (401 Unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('mospi_user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 // ── Dataset Upload ────────────────────────────────────────────────────────────
 
 export const uploadDataset = async (file) => {
