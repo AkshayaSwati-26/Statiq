@@ -16,3 +16,7 @@ dist/
 .DS_Store
 .pytest_cache/
 *.log
+# Security — never commit private keys or audit logs
+keys/
+logs/
+*.pem
