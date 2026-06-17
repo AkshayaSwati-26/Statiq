@@ -199,7 +199,7 @@ services:
       - JWT_SECRET=test-secret-at-least-32-chars-long!!
       - RSA_PRIVATE_KEY_PATH=keys/private.pem
       - RSA_PUBLIC_KEY_PATH=keys/public.pem
-      - ALLOWED_ORIGINS=http://localhost:5173
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:3001
       - ALLOWED_HOSTS=localhost,127.0.0.1,api
       - FORCE_HTTPS=false
       - AUDIT_LOG_PATH=/tmp/mospi_api_audit.jsonl
@@ -209,6 +209,7 @@ services:
       - ./ai:/app/ai
       - ./db:/app/db
       - ./keys:/app/keys
+      - ./ingestion:/app/ingestion
 
     depends_on:
       postgres:
@@ -217,6 +218,18 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+
+  # ── 7. Frontend (React + Vite + Nginx) ──────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: statiq-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

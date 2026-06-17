@@ -26,6 +26,9 @@ pandas==2.2.2
 numpy==1.26.4
 pyarrow==16.0.0
 openpyxl==3.1.2
+xlrd==2.0.1                  # legacy .xls support
+pyreadstat==1.2.7            # SPSS (.sav) and Stata (.dta) file parsing
+python-multipart==0.0.9      # required for FastAPI file uploads (UploadFile)
 pyspark==3.5.1
 
 # ── Validation & Config ────────────────────────────────────────────────────────

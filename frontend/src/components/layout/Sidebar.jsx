@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSession } from '../../hooks/useSession'
 import { useLang } from '../../hooks/useLang'
+import PremiumUpgradeModal from '../auth/PremiumUpgradeModal'
+
 
 const NAV_KEYS = [
   { path:'/dashboard', code:'01', tkey:'nav_overview', icon:'M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z' },
@@ -14,7 +17,60 @@ const NAV_KEYS = [
 
 export default function Sidebar() {
   const { datasetReady, filename, rowCount } = useSession()
+  const user = useSession(state => state.user)
+  const upgradeToPremium = useSession(state => state.upgradeToPremium)
   const { t, lang, setLang } = useLang()
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
+
+  const filteredNav = NAV_KEYS.filter(item => {
+    if (item.path === '/ingest' && (!user || user.scope !== 'admin')) {
+      return false
+    }
+    return true
+  })
+
+  const getRoleBadge = () => {
+    if (!user) return null
+    if (user.scope === 'admin') {
+      return (
+        <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', padding:'8px 12px', borderRadius:2, marginBottom:10 }}>
+          <div className="coord" style={{ color:'#ef4444', fontSize:9 }}>SUBSCRIPTION TIER</div>
+          <div className="data-val" style={{ color:'#ef4444', fontSize:11, fontWeight:700 }}>ADMINISTRATOR</div>
+        </div>
+      )
+    }
+    if (user.scope === 'research') {
+      return (
+        <div style={{ background:'rgba(34,211,238,0.1)', border:'1px solid rgba(34,211,238,0.3)', padding:'8px 12px', borderRadius:2, marginBottom:10 }}>
+          <div className="coord" style={{ color:'var(--cyan)', fontSize:9 }}>SUBSCRIPTION TIER</div>
+          <div className="data-val" style={{ color:'var(--cyan)', fontSize:11, fontWeight:700 }}>
+            {user.isSimulatedPremium ? 'PREMIUM (MOCK)' : 'PREMIUM USER'}
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid var(--rim-2)', padding:'8px 12px', borderRadius:2, marginBottom:10 }}>
+        <div className="coord" style={{ color:'var(--text-3)', fontSize:9 }}>SUBSCRIPTION TIER</div>
+        <div className="data-val" style={{ color:'var(--text-2)', fontSize:11, fontWeight:700, marginBottom:8 }}>FREE USER</div>
+        <button
+          onClick={() => setIsUpgradeOpen(true)}
+          style={{
+            width:'100%', padding:'6px 8px',
+            background:'linear-gradient(90deg, #f59e0b, #d97706)',
+            border:'none', borderRadius:2, cursor:'pointer',
+            fontFamily:"'Space Mono',monospace", fontSize:9, fontWeight:700,
+            color:'#010812', textTransform:'uppercase', letterSpacing:'0.05em',
+            transition: 'all 0.15s'
+          }}
+          onMouseEnter={e => e.target.style.boxShadow='0 0 10px rgba(245,158,11,0.4)'}
+          onMouseLeave={e => e.target.style.boxShadow='none'}
+        >
+          ✦ UPGRADE TO PREM
+        </button>
+      </div>
+    )
+  }
 
   return (
     <aside style={{ width:220, background:'var(--ink-2)', borderRight:'1px solid var(--rim-2)', display:'flex', flexDirection:'column', minHeight:'100vh', transition:'background 0.3s' }}>
@@ -98,7 +154,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={{ flex:1, padding:'8px 0' }}>
-        {NAV_KEYS.map(item => (
+        {filteredNav.map(item => (
           <NavLink key={item.path} to={item.path} style={{ display:'block', textDecoration:'none' }}>
             {({ isActive }) => (
               <div style={{
@@ -129,6 +185,11 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Subscription Card */}
+      <div style={{ padding:'0 16px 12px' }}>
+        {getRoleBadge()}
+      </div>
+
       {/* Footer */}
       <div style={{ padding:'12px 16px', borderTop:'1px solid var(--rim-2)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
@@ -138,6 +199,8 @@ export default function Sidebar() {
         <div className="coord" style={{ color:'var(--text-4)' }}>GOV-IN // STATATHON-2025</div>
         <div className="coord" style={{ color:'var(--text-4)', marginTop:2 }}>TEAM NEXUS // CLEARANCE: L3</div>
       </div>
+
+      <PremiumUpgradeModal isOpen={isUpgradeOpen} onClose={() => setIsUpgradeOpen(false)} />
     </aside>
   )
 }

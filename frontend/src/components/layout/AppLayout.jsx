@@ -1,8 +1,15 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, Navigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopNavbar from './TopNavbar'
+import { useSession } from '../../hooks/useSession'
 
 export default function AppLayout() {
+  const user = useSession(state => state.user)
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--ink)' }}>
       <Sidebar />

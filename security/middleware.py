@@ -130,17 +130,27 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """
     Reject requests with bodies larger than MAX_BODY_BYTES.
     Prevents memory exhaustion from large malicious payloads.
+    Upload endpoint (/upload) is exempt — it validates at parse time.
     """
-    MAX_BODY_BYTES = 1024 * 1024  # 1 MB
+    MAX_BODY_BYTES        = 100 * 1024 * 1024   # 100 MB (for dataset uploads)
+    MAX_BODY_BYTES_DEFAULT = 1024 * 1024         # 1 MB for all other endpoints
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > self.MAX_BODY_BYTES:
-            return Response(
-                content='{"detail":"Request body too large"}',
-                status_code=413,
-                media_type="application/json",
+        if content_length:
+            size = int(content_length)
+            # Upload endpoint gets the generous limit; everything else stays at 1 MB
+            limit = (
+                self.MAX_BODY_BYTES
+                if request.url.path in ("/upload", "/v1/upload")
+                else self.MAX_BODY_BYTES_DEFAULT
             )
+            if size > limit:
+                return Response(
+                    content='{"detail":"Request body too large"}',
+                    status_code=413,
+                    media_type="application/json",
+                )
         return await call_next(request)
 
 

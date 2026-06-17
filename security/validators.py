@@ -103,6 +103,11 @@ class NLQueryRequest(BaseModel):
         "en",
         description=f"ISO 639-1 language code. Supported: {sorted(VALID_LANGUAGES)}"
     )
+    session_id: Optional[str] = Field(
+        None,
+        max_length=256,
+        description="Active dataset session ID (e.g. sess_upload_mydata_20240617) for context-aware querying",
+    )
 
     @field_validator("question")
     @classmethod
@@ -164,3 +169,26 @@ class APIKeyCreateRequest(BaseModel):
         # Strip any HTML/script tags from the description
         v = re.sub(r"<[^>]+>", "", v).strip()
         return v
+
+
+class SignupRequest(BaseModel):
+    email:          str = Field(..., max_length=128)
+    password:       str = Field(..., min_length=12, max_length=128)
+    scope:          Literal["public", "admin"] = "public"
+    admin_passcode: Optional[str] = Field(None, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.match(r"^[^@]+@[^@]+\.[^@]+$", v):
+            raise ValueError("Invalid email format")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def no_null_bytes(cls, v: str) -> str:
+        if "\x00" in v:
+            raise ValueError("Password contains invalid characters")
+        return v
+

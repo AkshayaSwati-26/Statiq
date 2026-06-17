@@ -41,6 +41,7 @@ export default function QueryWorkspace() {
     setResult, setQuerying, setQueryError,
     lastResult, isQuerying, queryError, lastQuery,
   } = useSession()
+  const user = useSession(state => state.user)
 
   const [activeTab,  setActiveTab]  = useState('nl')
   const [nlQuery,    setNlQuery]    = useState('')
@@ -87,6 +88,7 @@ export default function QueryWorkspace() {
   }
 
   const examples = lang === 'hi' ? EXAMPLES_HI : EXAMPLES_EN
+  const isFree = user?.scope === 'public'
 
   return (
     <div style={{ maxWidth:1000, display:'flex', flexDirection:'column', gap:20 }}>
@@ -114,11 +116,17 @@ export default function QueryWorkspace() {
       <div style={{ display:'flex', gap:2, background:'var(--ink-2)', padding:3, width:'fit-content' }} className="a-iris d1">
         {[
           { id:'nl',      label: lang === 'hi' ? '✦ सामान्य भाषा' : '✦ Natural Language' },
-          { id:'builder', label: lang === 'hi' ? '⊞ प्रश्न बिल्डर' : '⊞ Query Builder'  },
+          { id:'builder', label: (lang === 'hi' ? '⊞ प्रश्न बिल्डर' : '⊞ Query Builder') + (isFree ? ' 🔒' : '') },
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              if (tab.id === 'builder' && isFree) {
+                alert('Visual Query Builder is a Premium Feature. Please upgrade to Premium Tier using the button in the sidebar to unlock advanced visual queries!')
+                return
+              }
+              setActiveTab(tab.id)
+            }}
             className="iris-btn"
             style={{
               padding:'8px 20px', fontSize:12,

@@ -10,6 +10,7 @@ export default function DataIngestion() {
   const navigate = useNavigate()
   const { setDataset, clearDataset, datasetReady, filename, rowCount,
           columns, uploadTime, datasetId, fileType, previewRows } = useSession()
+  const user = useSession(state => state.user)
   const { t } = useLang()
 
   const inputRef = useRef()
@@ -18,6 +19,35 @@ export default function DataIngestion() {
   const [progress,  setProgress]  = useState(0)
   const [error,     setError]     = useState('')
   const [done,      setDone]      = useState(datasetReady)
+
+  if (!user || user.scope !== 'admin') {
+    return (
+      <div style={{ maxWidth:600, padding:40, background:'var(--surface)', border:'1px solid var(--rim-2)', marginTop:40 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+          <div style={{ width:40, height:40, background:'rgba(220,38,38,0.1)', display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid var(--red)' }}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="var(--red)" strokeWidth="1.5" style={{ width:20, height:20 }}>
+              <rect x="3" y="11" width="10" height="8" rx="1"/>
+              <path d="M5 11V7a3 3 0 016 0v4"/>
+            </svg>
+          </div>
+          <div>
+            <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:22, color:'var(--red)', margin:0 }}>
+              ACCESS RESTRICTED
+            </h2>
+            <div className="coord" style={{ color:'var(--text-3)', marginTop:4 }}>
+              CLEARANCE LEVEL INSUFFICIENT
+            </div>
+          </div>
+        </div>
+        <p style={{ fontFamily:"'Space Mono',monospace", fontSize:13, color:'var(--text-2)', lineHeight:1.8, marginBottom:24 }}>
+          MoSPI Data Ingestion controls are restricted to the Administrator role only. Your current clearance tier ({user?.scope?.toUpperCase() || 'PUBLIC'}) does not permit manual dataset modifications.
+        </p>
+        <button onClick={() => navigate('/dashboard')} className="iris-btn iris-btn-cyan">
+          RETURN TO DASHBOARD
+        </button>
+      </div>
+    )
+  }
 
   const processFile = async (file) => {
     if (!file) return
@@ -32,9 +62,10 @@ export default function DataIngestion() {
       clearInterval(iv); setProgress(100)
       await new Promise(r => setTimeout(r, 300))
       setDataset(result); setDone(true)
-    } catch {
+    } catch (err) {
       clearInterval(iv)
-      setError('Upload failed. Please check the file and try again.')
+      const msg = err.message || 'Upload failed. Please check the file and try again.'
+      setError(msg)
     } finally { setUploading(false) }
   }
 
@@ -174,7 +205,7 @@ export default function DataIngestion() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:24 }}>
               {[
                 { label:'Dataset Name',  value: filename  },
-                { label:'Dataset ID',    value: datasetId },
+                { label:'Table (DB)',    value: datasetId },
                 { label:'File Type',     value: fileType  },
                 { label:'Total Records', value: rowCount?.toLocaleString() },
                 { label:'Columns',       value: columns?.length },

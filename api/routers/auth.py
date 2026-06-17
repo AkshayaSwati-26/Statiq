@@ -31,7 +31,7 @@ from security.auth import (
 )
 from security.audit import log_auth_event, log_security_event
 from security.rate_limiter import _get_client_ip
-from security.validators import TokenRequest, APIKeyCreateRequest
+from security.validators import TokenRequest, APIKeyCreateRequest, SignupRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/auth", tags=["authentication"])
@@ -47,7 +47,7 @@ _DB_AVAILABLE = True
 
 def _get_user_from_db(user_id: str) -> Optional[dict]:
     """
-    Fetch user record from DB.
+    Fetch user record from DB by user_id OR email.
     Returns dict with keys: user_id, password_hash, scope, is_active, api_keys
     Returns None if user not found.
     """
@@ -55,7 +55,7 @@ def _get_user_from_db(user_id: str) -> Optional[dict]:
         with engine.connect() as conn:
             row = conn.execute(
                 text("SELECT user_id, password_hash, scope, is_active "
-                     "FROM users WHERE user_id = :uid LIMIT 1"),
+                     "FROM users WHERE user_id = :uid OR email = :uid LIMIT 1"),
                 {"uid": user_id.lower().strip()}
             ).fetchone()
         return dict(row._mapping) if row else None
@@ -152,8 +152,201 @@ class LogoutResponse(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ENDPOINTS
-# ═══════════════════════════════════════════════════════════════════════════════
+# Helpers for registration
+def _generate_unique_user_id(email: str) -> str:
+    import re
+    base = email.split("@")[0].lower().strip()
+    base = re.sub(r"[^a-z0-9._\-]", "", base)
+    if not base:
+        base = "user"
+    
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT 1 FROM users WHERE user_id = :uid LIMIT 1"),
+                {"uid": base}
+            ).fetchone()
+            if not row:
+                return base
+            
+            i = 1
+            while True:
+                candidate = f"{base}{i}"
+                row = conn.execute(
+                    text("SELECT 1 FROM users WHERE user_id = :uid LIMIT 1"),
+                    {"uid": candidate}
+                ).fetchone()
+                if not row:
+                    return candidate
+                i += 1
+    except Exception as e:
+        logger.error(f"Error generating unique user_id: {e}")
+        import uuid
+        return f"{base}_{uuid.uuid4().hex[:6]}"
+
+def _check_email_exists(email: str) -> bool:
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT 1 FROM users WHERE email = :email LIMIT 1"),
+                {"email": email.lower().strip()}
+            ).fetchone()
+            return row is not None
+    except Exception as e:
+        logger.error(f"Error checking email existence: {e}")
+        return False
+
+
+@router.post("/register", response_model=LoginResponse)
+async def register(
+    body:     SignupRequest,
+    request:  Request,
+    response: Response,
+):
+    """
+    Register a new user account with role-based access control.
+    Supports auto-login after successful registration.
+    """
+    ip_hash = _get_client_ip(request)
+    email = body.email.lower().strip()
+
+    # 1. Check if email already exists
+    if _check_email_exists(email):
+        raise HTTPException(
+            status_code=400,
+            detail="Email is already registered"
+        )
+
+    # 2. Check admin passcode if scope is admin
+    scope = body.scope
+    if scope == "admin":
+        if not body.admin_passcode or body.admin_passcode != "MoSPIAdmin2026":
+            raise HTTPException(
+                status_code=403,
+                detail="Invalid administrator invitation passcode"
+            )
+
+    # 3. Generate unique user_id
+    user_id = _generate_unique_user_id(email)
+
+    # 4. Hash the password (also runs password strength validation)
+    try:
+        password_hash = hash_password(body.password)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+    # 5. Insert new user into database
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO users (user_id, password_hash, scope, is_active, email, created_at, updated_at)
+                    VALUES (:uid, :pwd, :scope, TRUE, :email, NOW(), NOW())
+                """),
+                {
+                    "uid": user_id,
+                    "pwd": password_hash,
+                    "scope": scope,
+                    "email": email,
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to register user in DB: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create user account. Please try again."
+        )
+
+    # 6. Issue tokens (Auto-login)
+    access_token  = create_access_token(user_id, scope)
+    refresh_token, refresh_jti = create_refresh_token(user_id, scope)
+
+    # 7. Store refresh JTI
+    _store_refresh_jti(user_id, refresh_jti)
+
+    # 8. Set HttpOnly cookies
+    set_auth_cookies(response, access_token, refresh_token)
+
+    log_auth_event("register_success", user_id, ip_hash, f"role={scope}")
+
+    return LoginResponse(
+        message    = "Registration successful",
+        scope      = scope,
+        expires_in = ACCESS_TOKEN_EXPIRE_MIN * 60,
+    )
+
+
+@router.post("/upgrade")
+async def upgrade_to_premium(
+    request:  Request,
+    response: Response,
+    token:    dict = Depends(verify_token),
+):
+    """
+    Upgrade currently logged-in user from public (Free) to research (Premium) scope.
+    Rotates auth tokens/cookies automatically.
+    """
+    ip_hash = _get_client_ip(request)
+    user_id = token.get("sub")
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token session")
+
+    # 1. Update user scope in DB
+    try:
+        with engine.begin() as conn:
+            # First check if user is already upgraded or is admin
+            current_user = conn.execute(
+                text("SELECT scope FROM users WHERE user_id = :uid LIMIT 1"),
+                {"uid": user_id}
+            ).fetchone()
+            
+            if not current_user:
+                raise HTTPException(status_code=404, detail="User not found")
+                
+            current_scope = current_user._mapping["scope"]
+            if current_scope in ("research", "admin"):
+                return {
+                    "message": "User is already premium or admin",
+                    "scope": current_scope,
+                }
+
+            # Update scope to research
+            conn.execute(
+                text("UPDATE users SET scope = 'research', updated_at = NOW() WHERE user_id = :uid"),
+                {"uid": user_id}
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upgrade user in DB: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process premium upgrade. Please try again."
+        )
+
+    # 2. Issue new tokens with upgraded scope
+    upgraded_scope = "research"
+    access_token  = create_access_token(user_id, upgraded_scope)
+    refresh_token, refresh_jti = create_refresh_token(user_id, upgraded_scope)
+
+    # 3. Store new refresh JTI
+    _store_refresh_jti(user_id, refresh_jti)
+
+    # 4. Set HttpOnly cookies
+    set_auth_cookies(response, access_token, refresh_token)
+
+    log_auth_event("upgrade_success", user_id, ip_hash)
+
+    return {
+        "message":    "Successfully upgraded to Premium",
+        "scope":      upgraded_scope,
+        "expires_in": ACCESS_TOKEN_EXPIRE_MIN * 60,
+    }
+
 
 @router.post("/login", response_model=LoginResponse)
 async def login(

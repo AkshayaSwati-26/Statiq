@@ -1,4 +1,10 @@
-export const USE_MOCK = true
+// USE_MOCK controls:
+//   USE_MOCK_UPLOAD  = false → real file upload hits the backend
+//   USE_MOCK_QUERY   = true  → NL/builder queries still return mock data
+//                             (set to false once Ollama/Claude is configured)
+export const USE_MOCK        = false   // legacy alias — not used directly anymore
+export const USE_MOCK_UPLOAD = false   // real upload endpoint
+export const USE_MOCK_QUERY  = true    // mock NL/SQL queries
 
 export const MOCK_UPLOAD = {
   session_id: 'sess_001',
@@ -17,6 +23,23 @@ export const MOCK_UPLOAD = {
     { state:'Kerala',      sector:'Rural', gender:'Female', employment_rate:38.5, unemployment_rate:15.2, survey_year:2024 },
     { state:'Maharashtra', sector:'Urban', gender:'Female', employment_rate:35.2, unemployment_rate:18.6, survey_year:2024 },
     { state:'Bihar',       sector:'Rural', gender:'Male',   employment_rate:55.1, unemployment_rate:22.3, survey_year:2024 },
+  ]
+}
+
+export const MOCK_HCES_UPLOAD = {
+  session_id: 'sess_hces',
+  filename: 'HCES_2023_Health_Members.csv',
+  dataset_id: 'api_hces_members',
+  file_type: 'CSV',
+  rows: 489000,
+  columns: 31,
+  upload_time: '2024-02-10 11:15 AM',
+  status: 'Ready',
+  column_names: ['state_name', 'sector_label', 'gender_label', 'age', 'education_label', 'hospitalised', 'chronic_ailment', 'insurance_label', 'multiplier'],
+  preview_rows: [
+    { state_name: 'Tamil Nadu', sector_label: 'Rural', gender_label: 'Female', age: 34, hospitalised: 0, chronic_ailment: 0 },
+    { state_name: 'Kerala', sector_label: 'Urban', gender_label: 'Male', age: 45, hospitalised: 1, chronic_ailment: 1 },
+    { state_name: 'Delhi', sector_label: 'Urban', gender_label: 'Female', age: 28, hospitalised: 0, chronic_ailment: 0 }
   ]
 }
 

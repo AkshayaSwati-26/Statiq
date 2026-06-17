@@ -2,7 +2,17 @@ import { create } from 'zustand'
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 
+const getStoredUser = () => {
+  try {
+    const item = localStorage.getItem('mospi_user')
+    return item ? JSON.parse(item) : null
+  } catch {
+    return null
+  }
+}
+
 export const useSession = create((set, get) => ({
+  user:         getStoredUser(),
   sessionId:    null,
   filename:     null,
   datasetReady: false,
@@ -18,6 +28,30 @@ export const useSession = create((set, get) => ({
   queryError:   null,
   queryHistory: [],
   _timeoutHandle: null,
+
+  loginUser: (userData) => {
+    localStorage.setItem('mospi_user', JSON.stringify(userData))
+    set({ user: userData })
+  },
+
+  logoutUser: () => {
+    localStorage.removeItem('mospi_user')
+    get().clearDataset()
+    set({ user: null })
+  },
+
+  upgradeToPremium: () => {
+    const current = get().user
+    if (current && current.scope === 'public') {
+      const updated = {
+        ...current,
+        scope: 'research',
+        isSimulatedPremium: true
+      }
+      localStorage.setItem('mospi_user', JSON.stringify(updated))
+      set({ user: updated })
+    }
+  },
 
   setDataset: (data) => {
     const prev = get()._timeoutHandle

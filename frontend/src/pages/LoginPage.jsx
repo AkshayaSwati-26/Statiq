@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSession } from '../hooks/useSession'
+import { USE_MOCK_UPLOAD } from '../utils/mockData'
+import axios from 'axios'
 
 /* ── Animated canvas: radar + floating data particles ── */
 function HeroCanvas() {
@@ -254,6 +257,9 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [phase,    setPhase]    = useState(0) // 0=loading 1=ready
+  const [isSignup, setIsSignup] = useState(false)
+  const [role,     setRole]     = useState('public')
+  const [adminPasscode, setAdminPasscode] = useState('')
 
   useEffect(() => {
     // simulate system boot sequence
@@ -261,13 +267,110 @@ export default function LoginPage() {
     return () => clearTimeout(t)
   }, [])
 
+  const loginUser = useSession(state => state.loginUser)
+
   const handleLogin = async (e) => {
     e.preventDefault()
     if (!email || !password) { setError('// ERROR: credentials required'); return }
     setError(''); setLoading(true)
-    await new Promise(r => setTimeout(r, 1300))
-    setLoading(false)
-    navigate('/dashboard')
+    
+    // Extract userId from email
+    const userId = email.includes('@') ? email.split('@')[0].toLowerCase().trim() : email.toLowerCase().trim()
+    const cleanEmail = email.includes('@') ? email.trim() : `${userId}@mospi.gov.in`
+
+    if (isSignup) {
+      try {
+        let scope = role
+
+        if (!USE_MOCK_UPLOAD) {
+          try {
+            const res = await axios.post(
+              'http://localhost:8000/v1/auth/register',
+              {
+                email: email.trim(),
+                password: password,
+                scope: role,
+                admin_passcode: role === 'admin' ? adminPasscode : null
+              },
+              { withCredentials: true }
+            )
+            scope = res.data.scope
+          } catch (err) {
+            setError(err.response?.data?.detail || '// ERROR: Registration failed')
+            setLoading(false)
+            return
+          }
+        } else {
+          // Mock registration
+          await new Promise(r => setTimeout(r, 1300))
+          if (role === 'admin' && adminPasscode !== 'MoSPIAdmin2026') {
+            setError('// ERROR: Invalid admin passcode')
+            setLoading(false)
+            return
+          }
+          scope = role === 'admin' ? 'admin' : 'public'
+        }
+
+        loginUser({
+          userId,
+          email: email.trim(),
+          scope
+        })
+
+        setLoading(false)
+        navigate('/dashboard')
+      } catch (err) {
+        setError('// ERROR: Registration process failed')
+        setLoading(false)
+      }
+      return
+    }
+
+    try {
+      let scope = 'public'
+
+      if (!USE_MOCK_UPLOAD) {
+        // Real backend authentication — sets HttpOnly cookie automatically
+        try {
+          const res = await axios.post(
+            'http://localhost:8000/v1/auth/login',
+            { user_id: email.trim().toLowerCase(), password: password },
+            { withCredentials: true }   // must be true to receive HttpOnly cookies
+          )
+          scope = res.data.scope
+        } catch (err) {
+          setError(err.response?.data?.detail || '// ERROR: Invalid credentials')
+          setLoading(false)
+          return
+        }
+      } else {
+        // Mock authentication (USE_MOCK_UPLOAD = true)
+        await new Promise(r => setTimeout(r, 1300))
+        if (userId === 'admin' && password === 'AdminPassword123!') {
+          scope = 'admin'
+        } else if (userId === 'analyst' && password === 'AdminPassword123!') {
+          scope = 'research'
+        } else if (userId === 'student' && password === 'AdminPassword123!') {
+          scope = 'public'
+        } else {
+          setError('// ERROR: Invalid credentials')
+          setLoading(false)
+          return
+        }
+      }
+
+      loginUser({
+        userId,
+        email: cleanEmail,
+        scope
+      })
+
+      setLoading(false)
+      navigate('/dashboard')
+    } catch (err) {
+      setError('// ERROR: Authentication process failed')
+      setLoading(false)
+    }
   }
 
   // ── BOOT SCREEN ──
@@ -448,10 +551,10 @@ export default function LoginPage() {
 
           <div style={{ marginBottom:32 }}>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:'rgba(245,158,11,0.9)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:10 }}>
-              // AUTHENTICATION REQUIRED
+              {isSignup ? "// REGISTER NEW ACCOUNT" : "// AUTHENTICATION REQUIRED"}
             </div>
             <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:24, color:'#f1f5f9' }}>
-              Secure Sign In
+              {isSignup ? "Create Account" : "Secure Sign In"}
             </h2>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:11, color:'rgba(148,163,184,0.9)', marginTop:6 }}>
               Ministry of Statistics &amp; Programme Implementation
@@ -498,7 +601,7 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div style={{ marginBottom:24 }}>
+              <div style={{ marginBottom:isSignup ? 16 : 24 }}>
                 <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
                   // Passphrase
                 </label>
@@ -519,12 +622,62 @@ export default function LoginPage() {
                 />
               </div>
 
+              {isSignup && (
+                <div style={{ marginBottom: role === 'admin' ? 16 : 24 }}>
+                  <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
+                    // User Role
+                  </label>
+                  <select
+                    value={role}
+                    onChange={e => setRole(e.target.value)}
+                    style={{
+                      width:'100%', padding:'10px 14px',
+                      background:'rgba(0,0,0,0.4)',
+                      border:'1px solid rgba(255,255,255,0.12)',
+                      color:'#f1f5f9', fontFamily:"'Space Mono',monospace",
+                      fontSize:12, outline:'none', borderRadius:2,
+                      transition:'border-color 0.15s',
+                      cursor:'pointer',
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.6)'}
+                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
+                  >
+                    <option value="public" style={{ background: '#0f1f35' }}>Student / Researcher</option>
+                    <option value="admin" style={{ background: '#0f1f35' }}>Administrator</option>
+                  </select>
+                </div>
+              )}
+
+              {isSignup && role === 'admin' && (
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
+                    // Admin Invite Passcode
+                  </label>
+                  <input
+                    type="password" value={adminPasscode}
+                    onChange={e => setAdminPasscode(e.target.value)}
+                    placeholder="MoSPIAdmin2026"
+                    style={{
+                      width:'100%', padding:'10px 14px',
+                      background:'rgba(0,0,0,0.4)',
+                      border:'1px solid rgba(255,255,255,0.12)',
+                      color:'#f1f5f9', fontFamily:"'Space Mono',monospace",
+                      fontSize:12, outline:'none', borderRadius:2,
+                      transition:'border-color 0.15s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.6)'}
+                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
+                  />
+                </div>
+              )}
+
               {error && (
                 <div style={{
                   fontFamily:"'Space Mono',monospace", fontSize:11,
                   color:'#ef4444', background:'rgba(239,68,68,0.08)',
                   border:'1px solid rgba(239,68,68,0.25)',
                   padding:'8px 12px', marginBottom:16,
+                  wordBreak:'break-word',
                 }}>
                   {error}
                 </div>
@@ -547,12 +700,34 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <div style={{ width:12, height:12, border:'2px solid rgba(0,0,0,0.3)', borderTopColor:'#010812', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}></div>
-                    AUTHENTICATING...
+                    {isSignup ? "REGISTERING..." : "AUTHENTICATING..."}
                   </>
                 ) : (
-                  <span className="cursor">ENTER PLATFORM</span>
+                  <span className="cursor">{isSignup ? "CREATE ACCOUNT" : "ENTER PLATFORM"}</span>
                 )}
               </button>
+
+              <div style={{ marginTop:20, textAlign:'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignup(!isSignup);
+                    setError('');
+                  }}
+                  style={{
+                    background:'none',
+                    border:'none',
+                    color:'#22d3ee',
+                    fontFamily:"'Space Mono',monospace",
+                    fontSize:11,
+                    cursor:'pointer',
+                    textDecoration:'underline',
+                    letterSpacing:'0.05em'
+                  }}
+                >
+                  {isSignup ? "◄ Back to Secure Sign In" : "Don't have an account? Create one ►"}
+                </button>
+              </div>
             </form>
           </div>
 
