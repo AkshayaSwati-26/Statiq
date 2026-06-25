@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from '../hooks/useSession'
 import { MOCK_DASHBOARD_STATS } from '../utils/mockData'
-import { uploadDataset } from '../services/api'
+
 import { getErrorMessage } from '../utils/errors'
+import axios from 'axios'
 
 const S = MOCK_DASHBOARD_STATS
+const ADM_API = axios.create({ baseURL: '', withCredentials: true })
 
 function StatBlock({ code, label, value, accent, delay }) {
   const color = { amber:'var(--amber)', cyan:'var(--cyan)', green:'var(--green)', dim:'var(--text-1)' }[accent]
@@ -34,88 +36,151 @@ export default function DashboardHome() {
   const [loadingDataset, setLoadingDataset] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const handleLoadDataset = async (type) => {
-    setLoadingDataset(true)
-    setErrorMsg('')
-    try {
-      const fileName = type === 'hces' ? 'api_hces_members.csv' : 'api_plfs_person.csv'
-      const mockFile = new File([], fileName)
-      const result = await uploadDataset(mockFile)
-      setDataset(result)
-    } catch (err) {
-      setErrorMsg(getErrorMessage(err, 'Access Denied: You do not have permission to access this dataset.'))
-    } finally {
-      setLoadingDataset(false)
+  // Live admin stats
+  const [liveStats, setLiveStats] = useState(null)
+  const [liveActivity, setLiveActivity] = useState(null)
+
+  useEffect(() => {
+    if (user) {
+      ADM_API.get('/v1/admin/overview').then(r => {
+        setLiveStats(r.data)
+        if (r.data.recent_activity?.length) setLiveActivity(r.data.recent_activity)
+      }).catch(() => { /* fallback to mock */ })
+      
+      ADM_API.get('/v1/datasets').then(r => {
+        const sorted = r.data.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
+        setAvailableDatasets(sorted.slice(0, 5))
+      }).catch(console.error)
     }
+  }, [user])
+
+  // Compute displayed stat values: live for admin, mock for others
+  const statDatasets = liveStats ? String(liveStats.datasets).padStart(2, '0') : S.total_datasets
+  const statQueries  = liveStats ? (liveStats.total_queries || liveStats.queries_24h || 0) : S.total_queries
+  const statRecords  = liveStats
+    ? String(liveStats.total_rows)
+    : String(S.records_processed).replace(/[^0-9]/g, '')
+  const statActive   = liveStats ? String(liveStats.total_users).padStart(2, '0') : (datasetReady ? '01' : '00')
+  const activityItems = liveActivity || S.recent_activity
+
+  const [availableDatasets, setAvailableDatasets] = useState([])
+
+  const handleLoadDataset = (ds) => {
+    setLoadingDataset(true)
+    setTimeout(() => {
+      setDataset({
+        session_id: `ses_${Date.now()}`,
+        dataset_id: ds.dataset_id,
+        file_name: ds.table_name,
+        file_format: ds.file_format,
+        row_count: ds.row_count,
+        column_count: ds.column_count,
+        columns: [],
+        preview_rows: [],
+        upload_time: ds.upload_time
+      })
+      setLoadingDataset(false)
+    }, 400)
   }
 
   const renderDatasetSelector = () => {
-    const isFree = user?.scope === 'public'
     return (
       <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
         <div className="coord" style={{ color:'var(--text-3)', marginBottom:4 }}>
-          // SELECT SURVEY DATASET TO INITIATE ANALYSIS
+          SELECT SURVEY DATASET TO INITIATE ANALYSIS
         </div>
         
-        {/* PLFS Card */}
-        <div
-          onClick={() => !loadingDataset && handleLoadDataset('plfs')}
-          style={{
-            background:'var(--ink-2)', border:'1px solid var(--rim-2)',
-            padding:14, cursor: loadingDataset ? 'not-allowed' : 'pointer',
-            transition:'all 0.15s', position:'relative', borderRadius: 2
-          }}
-          onMouseEnter={e => { if (!loadingDataset) e.currentTarget.style.borderColor='var(--amber)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor='var(--rim-2)' }}
-        >
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-            <span className="label-sm" style={{ color:'var(--amber)', fontSize:12, fontWeight:700 }}>PLFS 2024 (Annual Survey)</span>
-            <span className="tag tag-dim" style={{ fontSize:9 }}>PUBLIC / FREE</span>
+        {availableDatasets.length === 0 && (
+          <div className="coord" style={{ color:'var(--text-4)', fontStyle:'italic' }}>
+            No datasets available.
           </div>
-          <p className="coord" style={{ fontSize:10, margin:0, color:'var(--text-2)', lineHeight:1.4 }}>
-            Periodic Labour Force Survey. Access employment rates, unemployment metrics, and labour force participation statistics.
-          </p>
-        </div>
+        )}
 
-        {/* HCES Card */}
-        <div
-          onClick={() => {
-            if (isFree) {
-              alert('HCES is a Premium dataset. Click "Upgrade to Premium" in the sidebar to access it.')
-              return
-            }
-            if (!loadingDataset) handleLoadDataset('hces')
-          }}
-          style={{
-            background: isFree ? 'rgba(255,255,255,0.01)' : 'var(--ink-2)',
-            border: isFree ? '1px dashed var(--rim-2)' : '1px solid var(--rim-2)',
-            padding:14,
-            cursor: isFree ? 'default' : loadingDataset ? 'not-allowed' : 'pointer',
-            opacity: isFree ? 0.55 : 1,
-            transition:'all 0.15s', position:'relative', borderRadius: 2
-          }}
-          onMouseEnter={e => { if (!isFree && !loadingDataset) e.currentTarget.style.borderColor='var(--cyan)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor=isFree ? 'var(--rim-2)' : 'var(--rim-2)' }}
-        >
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-            <span className="label-sm" style={{ color: isFree ? 'var(--text-3)' : 'var(--cyan)', fontSize:12, fontWeight:700 }}>
-              HCES 2023 (Members Survey) {isFree && '🔒'}
-            </span>
-            <span className="tag" style={{ fontSize:9, background:'rgba(34,211,238,0.15)', color:'var(--cyan)' }}>PREMIUM ONLY</span>
-          </div>
-          <p className="coord" style={{ fontSize:10, margin:0, color: isFree ? 'var(--text-4)' : 'var(--text-2)', lineHeight:1.4 }}>
-            Household Consumption Expenditure Survey. Access deep analytics on household size, demographics, and consumption data.
-          </p>
-          {isFree && (
-            <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:4 }}>
-              <span className="coord" style={{ color:'var(--amber)', fontSize:9, fontWeight:700 }}>✦ UPGRADE REQUIRED TO UNLOCK</span>
+        {availableDatasets.map((ds, index) => {
+          const isFree = user?.scope === 'public'
+          const locked = isFree && ds.access_tier === 'premium'
+          return (
+            <div
+              key={ds.dataset_id}
+              style={{
+                background: locked ? 'rgba(255,255,255,0.01)' : 'var(--ink-2)',
+                border: locked ? '1px dashed var(--rim-2)' : '1px solid var(--rim-2)',
+                padding:14,
+                opacity: locked ? 0.55 : 1,
+                transition:'all 0.15s', position:'relative', borderRadius: 2
+              }}
+            >
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                <div style={{ display:'flex', alignItems:'center', gap: 8 }}>
+                  <span className="label-sm" style={{ color: locked ? 'var(--text-3)' : (ds.access_tier === 'premium' ? 'var(--cyan)' : 'var(--amber)'), fontSize:12, fontWeight:700 }}>
+                    {ds.original_name} {locked && '🔒'}
+                  </span>
+                  {index === 0 && (
+                    <span className="tag" style={{ background: 'var(--green)', color: '#000', fontSize: 9, padding: '2px 6px' }}>Recently Uploaded</span>
+                  )}
+                </div>
+                <span className="tag" style={{ fontSize:9, background: ds.access_tier === 'premium' ? 'rgba(34,211,238,0.15)' : 'rgba(245,158,11,0.15)', color: ds.access_tier === 'premium' ? 'var(--cyan)' : 'var(--amber)' }}>
+                  {ds.access_tier === 'premium' ? 'PREMIUM ONLY' : 'PUBLIC / FREE'}
+                </span>
+              </div>
+              <p className="coord" style={{ fontSize:10, margin:'0 0 8px 0', color: locked ? 'var(--text-4)' : 'var(--text-2)', lineHeight:1.4 }}>
+                {ds.description || `${(ds.row_count || 0).toLocaleString()} rows · ${ds.column_count || 0} columns · Table: ${ds.table_name}`}
+              </p>
+              {ds.uploaded_at && (
+                <p className="coord" style={{ fontSize:9, margin:'0 0 10px 0', color: 'var(--text-4)' }}>
+                  Uploaded: {new Date(ds.uploaded_at).toLocaleString()}
+                </p>
+              )}
+              {locked && (
+                <div style={{ marginBottom: 8, display:'flex', alignItems:'center', gap:4 }}>
+                  <span className="coord" style={{ color:'var(--amber)', fontSize:9, fontWeight:700 }}>✦ UPGRADE REQUIRED TO UNLOCK</span>
+                </div>
+              )}
+              {/* Action buttons */}
+              <div style={{ display:'flex', gap:8 }}>
+                <button
+                  onClick={() => navigate(`/datasets/${encodeURIComponent(ds.dataset_id)}/explore`)}
+                  style={{
+                    flex:1, padding:'7px', fontSize:10, cursor:'pointer',
+                    background:'transparent', border:'1px solid rgba(34,211,238,0.3)',
+                    color:'var(--cyan)', fontFamily:"'Space Mono',monospace",
+                    letterSpacing:'0.06em', transition:'all 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,211,238,0.06)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  🔍 EXPLORE
+                </button>
+                <button
+                  onClick={() => {
+                    if (locked) {
+                      alert('This is a Premium dataset. Click "Upgrade to Premium" in the sidebar to access it.')
+                      return
+                    }
+                    if (!loadingDataset) handleLoadDataset(ds)
+                  }}
+                  style={{
+                    flex:2, padding:'7px', fontSize:10,
+                    cursor: locked ? 'default' : loadingDataset ? 'not-allowed' : 'pointer',
+                    background: locked ? 'transparent' : 'var(--ink-3)',
+                    border:`1px solid ${locked ? 'var(--rim)' : ds.access_tier === 'premium' ? 'rgba(34,211,238,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                    color: locked ? 'var(--text-4)' : ds.access_tier === 'premium' ? 'var(--cyan)' : 'var(--amber)',
+                    fontFamily:"'Space Mono',monospace",
+                    letterSpacing:'0.06em', transition:'all 0.15s',
+                  }}
+                  onMouseEnter={e => { if (!locked && !loadingDataset) e.currentTarget.style.background = 'var(--ink-2)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = locked ? 'transparent' : 'var(--ink-3)' }}
+                >
+                  {locked ? 'LOCKED' : 'QUERY DATASET →'}
+                </button>
+              </div>
             </div>
-          )}
-        </div>
+          )
+        })}
 
         {loadingDataset && (
           <div className="coord" style={{ color:'var(--amber)', textAlign:'center', marginTop:4 }}>
-            // LOADING SECURE VIEW ENVIRONMENT...
+            LOADING SECURE VIEW ENVIRONMENT...
           </div>
         )}
 
@@ -144,7 +209,7 @@ export default function DashboardHome() {
       <div className="a-iris" style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
         <div>
           <div className="coord" style={{ color:'var(--amber)', marginBottom:6 }}>
-            // SYSTEM OVERVIEW // {new Date().toLocaleDateString('en-IN')}
+            SYSTEM OVERVIEW // {new Date().toLocaleDateString('en-IN')}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <h1 style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:26, color:'var(--text-0)', letterSpacing:'0.04em', margin:0 }}>
@@ -163,7 +228,7 @@ export default function DashboardHome() {
               </span>
             )}
           </div>
-          <div className="label-xs" style={{ marginTop:4 }}>MoSPI Survey Intelligence Platform · Real-time analytics</div>
+          <div className="label-xs" style={{ marginTop:4 }}>StatIQ · Real-time analytics</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <span className="status-dot status-live"></span>
@@ -173,10 +238,10 @@ export default function DashboardHome() {
 
       {/* Stat blocks */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
-        <StatBlock code="// STAT-01" label="DATASETS INGESTED"   value={S.total_datasets}      accent="amber"  delay={1} />
-        <StatBlock code="// STAT-02" label="QUERIES EXECUTED"    value={S.total_queries}       accent="cyan"   delay={2} />
-        <StatBlock code="// STAT-03" label="RECORDS PROCESSED"   value={S.records_processed}   accent="green"  delay={3} />
-        <StatBlock code="// STAT-04" label="ACTIVE DATASET"      value={datasetReady ? '01':'00'} accent="dim" delay={4} />
+        <StatBlock code="STAT-01" label="DATASETS INGESTED"   value={statDatasets}      accent="amber"  delay={1} />
+        <StatBlock code="STAT-02" label="QUERIES EXECUTED"    value={statQueries}       accent="cyan"   delay={2} />
+        <StatBlock code="STAT-03" label="RECORDS PROCESSED"   value={statRecords}       accent="green"  delay={3} />
+        <StatBlock code="STAT-04" label="ACTIVE USERS" value={statActive} accent="dim" delay={4} />
       </div>
 
       {/* Main grid */}
@@ -253,7 +318,7 @@ export default function DashboardHome() {
             </div>
           </div>
           <div style={{ padding:12, display:'flex', flexDirection:'column', gap:2 }}>
-            {S.recent_activity.map((item, i) => (
+            {activityItems.map((item, i) => (
               <div key={i} className={`a-slide d${i+1}`} style={{
                 display:'flex', alignItems:'center', gap:12,
                 padding:'10px 12px',
@@ -316,7 +381,7 @@ export default function DashboardHome() {
 
       {/* Classification bar */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--rim)' }}>
-        <span className="coord">IRIS v2.1 // MoSPI SURVEY INTELLIGENCE PLATFORM // TEAM NEXUS</span>
+        <span className="coord">StatIQ // TEAM NEXUS</span>
         <span className="coord">CLASSIFICATION: OFFICIAL USE ONLY // DPDP ACT 2023</span>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { useLang } from '../hooks/useLang'
 import { uploadDataset } from '../services/api'
 
-const ACCEPTED = ['.csv','.xlsx','.xls','.sav','.dta','.txt']
+const ACCEPTED = ['.csv','.xlsx','.xls','.sav','.dta','.txt','.zip']
 
 export default function DataIngestion() {
   const navigate = useNavigate()
@@ -19,6 +19,10 @@ export default function DataIngestion() {
   const [progress,  setProgress]  = useState(0)
   const [error,     setError]     = useState('')
   const [done,      setDone]      = useState(datasetReady)
+
+  // ZIP multi-file state
+  const [zipMode,   setZipMode]   = useState(false)
+  const [zipFiles,  setZipFiles]  = useState([]) // { name, status, rows, message }
 
   if (!user || user.scope !== 'admin') {
     return (
@@ -54,6 +58,87 @@ export default function DataIngestion() {
     const name = file.name.toLowerCase()
     const ok   = ACCEPTED.some(ext => name.endsWith(ext))
     if (!ok) { setError(`File type not supported. Use: ${ACCEPTED.join(', ')}`); return }
+
+    // ZIP file handling — use SSE endpoint
+    if (name.endsWith('.zip')) {
+      setZipMode(true)
+      setZipFiles([])
+      setUploading(true)
+      setError('')
+      setProgress(0)
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const response = await fetch('/v1/upload/zip', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ detail: 'Upload failed' }))
+          throw new Error(errData.detail || `HTTP ${response.status}`)
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done: readerDone, value } = await reader.read()
+          if (readerDone) break
+          buffer += decoder.decode(value, { stream: true })
+
+          const lines = buffer.split('\n\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            const dataLine = line.replace(/^data: /, '')
+            if (!dataLine) continue
+            try {
+              const event = JSON.parse(dataLine)
+              if (event.status === 'complete') {
+                setProgress(100)
+              } else if (event.file || event.filename) {
+                const fName = event.file || event.filename
+                setZipFiles(prev => {
+                  const existing = prev.findIndex(f => f.name === fName)
+                  const entry = {
+                    name: fName,
+                    status: event.status,
+                    rows: event.row_count || event.rows || 0,
+                    message: event.message || event.error || '',
+                    duplicate: event.duplicate || false,
+                  }
+                  if (existing >= 0) {
+                    const updated = [...prev]
+                    updated[existing] = entry
+                    return updated
+                  }
+                  return [...prev, entry]
+                })
+                if (event.total) {
+                  setProgress(Math.round((event.index / event.total) * 100))
+                }
+              }
+            } catch (e) { /* skip malformed SSE */ }
+          }
+        }
+
+        await new Promise(r => setTimeout(r, 500))
+        setDone(true)
+      } catch (err) {
+        setError(err.message || 'ZIP upload failed')
+      } finally {
+        setUploading(false)
+      }
+      return
+    }
+
+    // Single file handling (existing behavior)
+    setZipMode(false)
     setError(''); setUploading(true); setProgress(0)
 
     const iv = setInterval(() => setProgress(p => p >= 88 ? (clearInterval(iv), 88) : p + 10), 110)
@@ -84,15 +169,18 @@ export default function DataIngestion() {
       </div>
 
       {/* Upload zone */}
-      {!done && (
+      {(!done || zipMode) && (
         <div className="panel a-iris d1" style={{ overflow:'hidden' }}>
           <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--rim-2)', display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:3, height:16, background:'var(--amber)' }}></div>
-            <span className="label-sm" style={{ fontSize:12 }}>UPLOAD SURVEY DATASET</span>
+            <div style={{ width:3, height:16, background: done ? 'var(--green)' : 'var(--amber)' }}></div>
+            <span className="label-sm" style={{ fontSize:12 }}>
+              {done ? 'BATCH INGESTION COMPLETE' : 'UPLOAD SURVEY DATASET'}
+            </span>
           </div>
 
           <div style={{ padding:24 }}>
             {/* Drop zone */}
+            {!done && (
             <div
               onClick={() => !uploading && inputRef.current.click()}
               onDrop={e => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]) }}
@@ -126,9 +214,9 @@ export default function DataIngestion() {
                     or click to browse your files
                   </div>
                   <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:8, marginBottom:20 }}>
-                    {['CSV','XLSX','XLS','SPSS (.sav)','Stata (.dta)','FWF (.txt)'].map(fmt => (
-                      <span key={fmt} className="tag tag-dim" style={{ fontSize:10 }}>{fmt}</span>
-                    ))}
+                    {['CSV','XLSX','XLS','SPSS (.sav)','Stata (.dta)','FWF (.txt)','ZIP'].map(fmt => (
+                    <span key={fmt} className="tag tag-dim" style={{ fontSize:10 }}>{fmt}</span>
+                  ))}
                   </div>
                   <button className="iris-btn iris-btn-cyan" style={{ fontSize:12 }}>
                     {t('ingest_browse').toUpperCase()}
@@ -136,6 +224,7 @@ export default function DataIngestion() {
                 </>
               )}
             </div>
+            )}
 
             {/* Progress */}
             {uploading && (
@@ -166,12 +255,100 @@ export default function DataIngestion() {
 
             <input ref={inputRef} type="file" accept={ACCEPTED.join(',')} style={{ display:'none' }}
               onChange={e => processFile(e.target.files[0])} />
+
+            {/* ZIP multi-file status */}
+            {zipMode && zipFiles.length > 0 && (
+              <div style={{ marginTop: 16, border: '1px solid var(--rim-2)', background: 'var(--ink-2)' }}>
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--rim)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 2, height: 12, background: 'var(--amber)' }}></div>
+                  <span className="label-xs" style={{ fontSize: 10 }}>EXTRACTED FILES</span>
+                  <span className="tag tag-dim" style={{ marginLeft: 'auto', fontSize: 9 }}>{zipFiles.length} FILES</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {zipFiles.map((zf, i) => {
+                    const statusIcon = zf.status === 'success' ? '✅'
+                      : zf.status === 'duplicate' ? '⚠️'
+                      : zf.status === 'error' ? '❌'
+                      : zf.status === 'processing' ? '🔄' : '⏳'
+                    const statusColor = zf.status === 'success' ? 'var(--green)'
+                      : zf.status === 'duplicate' ? 'var(--amber)'
+                      : zf.status === 'error' ? 'var(--red)'
+                      : 'var(--text-3)'
+                    return (
+                      <div key={zf.name + i} style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px',
+                        borderBottom: i < zipFiles.length - 1 ? '1px solid var(--rim)' : 'none',
+                        background: zf.status === 'error' ? 'rgba(220,38,38,0.03)'
+                          : zf.status === 'duplicate' ? 'rgba(245,158,11,0.03)'
+                          : zf.status === 'success' ? 'rgba(16,185,129,0.03)'
+                          : 'transparent',
+                      }}>
+                        <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{statusIcon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: 'var(--text-0)', marginBottom: 2 }}>
+                            {zf.name}
+                          </div>
+                          {zf.message && (
+                            <div className="coord" style={{ fontSize: 9, color: statusColor }}>
+                              {zf.message}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          {zf.rows > 0 && (
+                            <span className="tag tag-dim" style={{ fontSize: 9 }}>{zf.rows.toLocaleString()} ROWS</span>
+                          )}
+                          <span style={{
+                            padding: '2px 8px', fontSize: 9, fontWeight: 700,
+                            fontFamily: "'Space Mono',monospace", letterSpacing: '0.06em',
+                            border: `1px solid ${statusColor}`,
+                            color: statusColor, textTransform: 'uppercase',
+                          }}>
+                            {zf.status === 'success' ? 'STORED' : zf.status?.toUpperCase() || 'PENDING'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* Summary bar */}
+                {!uploading && zipFiles.length > 0 && (
+                  <div style={{
+                    padding: '10px 14px', borderTop: '1px solid var(--rim)',
+                    display: 'flex', gap: 16, background: 'var(--ink-3)',
+                  }}>
+                    <span className="coord" style={{ color: 'var(--green)', fontSize: 10 }}>
+                      ✅ {zipFiles.filter(f => f.status === 'success').length} stored
+                    </span>
+                    <span className="coord" style={{ color: 'var(--amber)', fontSize: 10 }}>
+                      ⚠️ {zipFiles.filter(f => f.status === 'duplicate').length} duplicates skipped
+                    </span>
+                    <span className="coord" style={{ color: 'var(--red)', fontSize: 10 }}>
+                      ❌ {zipFiles.filter(f => f.status === 'error').length} errors
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Post-ZIP actions */}
+            {done && zipMode && (
+              <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
+                <button onClick={() => { setDone(false); setZipMode(false); setZipFiles([]); setError(''); }} className="iris-btn iris-btn-ghost">
+                  UPLOAD ANOTHER BATCH
+                </button>
+                <button onClick={() => navigate('/admin/datasets')} className="iris-btn iris-btn-cyan">
+                  VIEW IN DATASETS REGISTRY
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Success card */}
-      {done && (
+      {/* Success card (Single file only) */}
+      {done && !zipMode && (
         <div className="panel a-iris d1" style={{ overflow:'hidden' }}>
 
           {/* Green header */}
@@ -229,7 +406,7 @@ export default function DataIngestion() {
               </div>
               <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                 {columns?.map(col => (
-                  <span key={col} className="tag tag-cyan" style={{ fontSize:10 }}>{col}</span>
+                  <span key={col} className="tag tag-cyan" style={{ fontSize:10, fontFamily:"'DM Mono',monospace" }}>{col}</span>
                 ))}
               </div>
             </div>
@@ -279,7 +456,14 @@ export default function DataIngestion() {
             </div>
 
             {/* Actions */}
-            <div style={{ display:'flex', gap:12 }}>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              <button
+                onClick={() => navigate(`/datasets/${encodeURIComponent(datasetId)}/explore`)}
+                className="iris-btn iris-btn-cyan"
+                style={{ flex:1, fontSize:13, padding:'13px' }}
+              >
+                🔍 EXPLORE DATASET METADATA
+              </button>
               <button
                 onClick={() => navigate('/query')}
                 className="iris-btn iris-btn-primary"

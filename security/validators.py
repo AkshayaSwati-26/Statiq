@@ -174,8 +174,11 @@ class APIKeyCreateRequest(BaseModel):
 class SignupRequest(BaseModel):
     email:          str = Field(..., max_length=128)
     password:       str = Field(..., min_length=6, max_length=128)
-    scope:          Literal["public", "admin"] = "public"
+    scope:          Literal["public", "admin", "research"] = "public"
     admin_passcode: Optional[str] = Field(None, max_length=128)
+    name:           Optional[str] = Field(None, max_length=128)
+    institution:    Optional[str] = Field(None, max_length=128)
+    purpose:        Optional[str] = Field(None, max_length=512)
 
     @field_validator("email")
     @classmethod
@@ -191,4 +194,9 @@ class SignupRequest(BaseModel):
         if "\x00" in v:
             raise ValueError("Password contains invalid characters")
         return v
+
+
+class VerifyOtpRequest(BaseModel):
+    email: str = Field(..., max_length=128)
+    otp: str = Field(..., min_length=6, max_length=6)
 

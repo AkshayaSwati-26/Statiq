@@ -257,10 +257,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
+  const [success,  setSuccess]  = useState('')
   const [phase,    setPhase]    = useState(0) // 0=loading 1=ready
   const [isSignup, setIsSignup] = useState(false)
   const [role,     setRole]     = useState('public')
   const [adminPasscode, setAdminPasscode] = useState('')
+  const [name, setFullName] = useState('')
+  const [institution, setInstitution] = useState('')
+  const [purpose, setPurpose] = useState('')
+  const [otpMode, setOtpMode] = useState(false)
+  const [otp, setOtp] = useState('')
 
   useEffect(() => {
     // simulate system boot sequence
@@ -286,12 +292,15 @@ export default function LoginPage() {
         if (!USE_MOCK_UPLOAD) {
           try {
             const res = await axios.post(
-              'http://localhost:8000/v1/auth/register',
+              '/v1/auth/register',
               {
                 email: email.trim(),
                 password: password,
                 scope: role,
-                admin_passcode: role === 'admin' ? adminPasscode : null
+                admin_passcode: role === 'admin' ? adminPasscode : null,
+                name: name,
+                institution: institution,
+                purpose: purpose
               },
               { withCredentials: true }
             )
@@ -334,7 +343,7 @@ export default function LoginPage() {
         // Real backend authentication — sets HttpOnly cookie automatically
         try {
           const res = await axios.post(
-            'http://localhost:8000/v1/auth/login',
+            '/v1/auth/login',
             { user_id: email.trim().toLowerCase(), password: password },
             { withCredentials: true }   // must be true to receive HttpOnly cookies
           )
@@ -374,6 +383,47 @@ export default function LoginPage() {
     }
   }
 
+  const handleOtpVerify = async (e) => {
+    e.preventDefault()
+    if (!otp) { setError('// ERROR: OTP required'); return }
+    setError(''); setLoading(true)
+
+    try {
+      let scope = 'public'
+      const userId = email.includes('@') ? email.split('@')[0].toLowerCase().trim() : email.toLowerCase().trim()
+      const cleanEmail = email.includes('@') ? email.trim() : `${userId}@mospi.gov.in`
+
+      if (!USE_MOCK_UPLOAD) {
+        try {
+          const res = await axios.post(
+            '/v1/auth/verify-otp',
+            { email: email.trim(), otp: otp },
+            { withCredentials: true }
+          )
+          scope = res.data.scope
+        } catch (err) {
+          setError(getErrorMessage(err, '// ERROR: Invalid OTP'))
+          setLoading(false)
+          return
+        }
+      } else {
+        await new Promise(r => setTimeout(r, 1300))
+      }
+
+      loginUser({
+        userId,
+        email: cleanEmail,
+        scope
+      })
+
+      setLoading(false)
+      navigate('/dashboard')
+    } catch (err) {
+      setError('// ERROR: OTP verification failed')
+      setLoading(false)
+    }
+  }
+
   // ── BOOT SCREEN ──
   if (phase === 0) {
     return (
@@ -409,7 +459,7 @@ export default function LoginPage() {
           </div>
 
           <div style={{ fontSize:28, fontFamily:"'Syne',sans-serif", fontWeight:800, color:'#f1f5f9', letterSpacing:'0.12em', marginBottom:6 }}>
-            IRIS
+            STATIQ
           </div>
           <div style={{ fontSize:10, color:'rgba(100,116,139,1)', letterSpacing:'0.25em' }}>
             INTELLIGENCE &amp; RESEARCH INTERFACE SYSTEM
@@ -466,7 +516,7 @@ export default function LoginPage() {
           </div>
           <div>
             <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:20, color:'#f1f5f9', letterSpacing:'0.12em' }} className="a-flicker">
-              IRIS
+              STATIQ
             </div>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:'rgba(148,163,184,0.8)', letterSpacing:'0.2em', textTransform:'uppercase' }}>
               Intelligence &amp; Research Interface System
@@ -530,7 +580,7 @@ export default function LoginPage() {
         <div>
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', paddingTop:16 }}>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:'rgba(100,116,139,0.8)', letterSpacing:'0.08em' }}>
-              GOV-IN // MoSPI-SIP // STATATHON-2025 // TEAM-NEXUS
+              GOV-IN // StatIQ // STATATHON-2025 // TEAM-NEXUS
             </div>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:'rgba(100,116,139,0.5)', marginTop:4, letterSpacing:'0.08em' }}>
               CLASSIFICATION: OFFICIAL USE ONLY
@@ -552,13 +602,13 @@ export default function LoginPage() {
 
           <div style={{ marginBottom:32 }}>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:'rgba(245,158,11,0.9)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:10 }}>
-              {isSignup ? "// REGISTER NEW ACCOUNT" : "// AUTHENTICATION REQUIRED"}
+              {isSignup ? "REGISTER NEW ACCOUNT" : "AUTHENTICATION REQUIRED"}
             </div>
             <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:24, color:'#f1f5f9' }}>
               {isSignup ? "Create Account" : "Secure Sign In"}
             </h2>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:11, color:'rgba(148,163,184,0.9)', marginTop:6 }}>
-              Ministry of Statistics &amp; Programme Implementation
+              StatIQ - Real-time Analytics
             </div>
           </div>
 
@@ -580,10 +630,75 @@ export default function LoginPage() {
               }}/>
             ))}
 
+            {otpMode ? (
+              <form onSubmit={handleOtpVerify}>
+                <div style={{ marginBottom:24 }}>
+                  <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
+                    OTP Verification
+                  </label>
+                  <input
+                    type="text" value={otp}
+                    onChange={e => setOtp(e.target.value)}
+                    placeholder="Enter 6-digit OTP"
+                    style={{
+                      width:'100%', padding:'10px 14px',
+                      background:'rgba(0,0,0,0.4)',
+                      border:'1px solid rgba(255,255,255,0.12)',
+                      color:'#f1f5f9', fontFamily:"'Space Mono',monospace",
+                      fontSize:12, outline:'none', borderRadius:2,
+                      transition:'border-color 0.15s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.6)'}
+                    onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
+                  />
+                </div>
+                
+                {error && (
+                  <div style={{
+                    fontFamily:"'Space Mono',monospace", fontSize:11,
+                    color:'#ef4444', background:'rgba(239,68,68,0.08)',
+                    border:'1px solid rgba(239,68,68,0.25)',
+                    padding:'8px 12px', marginBottom:16,
+                    wordBreak:'break-word',
+                  }}>
+                    {error}
+                  </div>
+                )}
+                
+                <button
+                  type="submit" disabled={loading}
+                  style={{
+                    width:'100%', padding:'12px', background:'rgba(245,158,11,0.9)',
+                    color:'#010812', border:'none', fontFamily:"'Space Mono',monospace",
+                    fontSize:12, fontWeight:700, letterSpacing:'0.1em',
+                    cursor:loading ? 'wait' : 'pointer',
+                    transition:'background 0.2s', borderRadius:2,
+                  }}
+                  onMouseOver={e => !loading && (e.target.style.background = '#f59e0b')}
+                  onMouseOut={e  => !loading && (e.target.style.background = 'rgba(245,158,11,0.9)')}
+                >
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    {loading ? (
+                      <>
+                        <div style={{ width:12, height:12, border:'2px solid rgba(1,8,18,0.2)', borderTopColor:'#010812', borderRadius:'50%', animation:'spin 1s linear infinite' }}></div>
+                        VERIFYING...
+                      </>
+                    ) : (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                        </svg>
+                        <span className="cursor">VERIFY OTP</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+              </form>
+            ) : (
             <form onSubmit={handleLogin}>
               <div style={{ marginBottom:16 }}>
                 <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
-                  // Official Email
+                  Official Email
                 </label>
                 <input
                   type="email" value={email}
@@ -604,7 +719,7 @@ export default function LoginPage() {
 
               <div style={{ marginBottom:isSignup ? 16 : 24 }}>
                 <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
-                  // Passphrase
+                  Passphrase
                 </label>
                 <input
                   type="password" value={password}
@@ -626,7 +741,7 @@ export default function LoginPage() {
               {isSignup && (
                 <div style={{ marginBottom: role === 'admin' ? 16 : 24 }}>
                   <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
-                    // User Role
+                    User Role
                   </label>
                   <select
                     value={role}
@@ -652,7 +767,7 @@ export default function LoginPage() {
               {isSignup && role === 'admin' && (
                 <div style={{ marginBottom: 24 }}>
                   <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
-                    // Admin Invite Passcode
+                    Admin Invite Passcode
                   </label>
                   <input
                     type="password" value={adminPasscode}
@@ -672,6 +787,71 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {isSignup && role === 'public' && (
+                <>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
+                      Full Name
+                    </label>
+                    <input
+                      type="text" value={name}
+                      onChange={e => setFullName(e.target.value)}
+                      placeholder="Jane Doe"
+                      style={{
+                        width:'100%', padding:'10px 14px',
+                        background:'rgba(0,0,0,0.4)',
+                        border:'1px solid rgba(255,255,255,0.12)',
+                        color:'#f1f5f9', fontFamily:"'Space Mono',monospace",
+                        fontSize:12, outline:'none', borderRadius:2,
+                        transition:'border-color 0.15s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.6)'}
+                      onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
+                      Institution / Organization
+                    </label>
+                    <input
+                      type="text" value={institution}
+                      onChange={e => setInstitution(e.target.value)}
+                      placeholder="University or Company Name"
+                      style={{
+                        width:'100%', padding:'10px 14px',
+                        background:'rgba(0,0,0,0.4)',
+                        border:'1px solid rgba(255,255,255,0.12)',
+                        color:'#f1f5f9', fontFamily:"'Space Mono',monospace",
+                        fontSize:12, outline:'none', borderRadius:2,
+                        transition:'border-color 0.15s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.6)'}
+                      onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display:'block', fontFamily:"'Space Mono',monospace", fontSize:10, color:'rgba(148,163,184,1)', letterSpacing:'0.15em', textTransform:'uppercase', marginBottom:8 }}>
+                      Purpose of Registration
+                    </label>
+                    <input
+                      type="text" value={purpose}
+                      onChange={e => setPurpose(e.target.value)}
+                      placeholder="E.g., Research on education metrics"
+                      style={{
+                        width:'100%', padding:'10px 14px',
+                        background:'rgba(0,0,0,0.4)',
+                        border:'1px solid rgba(255,255,255,0.12)',
+                        color:'#f1f5f9', fontFamily:"'Space Mono',monospace",
+                        fontSize:12, outline:'none', borderRadius:2,
+                        transition:'border-color 0.15s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = 'rgba(245,158,11,0.6)'}
+                      onBlur={e  => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
+                    />
+                  </div>
+                </>
+              )}
+
               {error && (
                 <div style={{
                   fontFamily:"'Space Mono',monospace", fontSize:11,
@@ -681,6 +861,18 @@ export default function LoginPage() {
                   wordBreak:'break-word',
                 }}>
                   {error}
+                </div>
+              )}
+
+              {success && (
+                <div style={{
+                  fontFamily:"'Space Mono',monospace", fontSize:11,
+                  color:'#10b981', background:'rgba(16,185,129,0.08)',
+                  border:'1px solid rgba(16,185,129,0.25)',
+                  padding:'8px 12px', marginBottom:16,
+                  wordBreak:'break-word',
+                }}>
+                  {success}
                 </div>
               )}
 
@@ -712,24 +904,26 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setIsSignup(!isSignup);
-                    setError('');
+                    setIsSignup(!isSignup); 
+                    setError(''); 
+                    setSuccess('');
+                    setOtpMode(false);
                   }}
                   style={{
-                    background:'none',
-                    border:'none',
-                    color:'#22d3ee',
-                    fontFamily:"'Space Mono',monospace",
-                    fontSize:11,
-                    cursor:'pointer',
-                    textDecoration:'underline',
-                    letterSpacing:'0.05em'
+                    background:'none', border:'none',
+                    fontFamily:"'Space Mono',monospace", fontSize:11,
+                    color:'rgba(148,163,184,1)', cursor:'pointer',
+                    textDecoration:'underline', textUnderlineOffset:4,
+                    transition:'color 0.2s'
                   }}
+                  onMouseOver={e => e.target.style.color = '#f1f5f9'}
+                  onMouseOut={e  => e.target.style.color = 'rgba(148,163,184,1)'}
                 >
                   {isSignup ? "◄ Back to Secure Sign In" : "Don't have an account? Create one ►"}
                 </button>
               </div>
             </form>
+            )}
           </div>
 
           <div style={{ marginTop:20, textAlign:'center', fontFamily:"'Space Mono',monospace", fontSize:9, color:'rgba(100,116,139,0.7)', letterSpacing:'0.08em' }}>

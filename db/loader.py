@@ -12,6 +12,8 @@ from db.postgres_client import DB_URL, StatIQDB
 # Expose the connection engine for PostgreSQL
 engine = sa.create_engine(
     DB_URL,
+    pool_size=20,
+    max_overflow=10,
     pool_pre_ping=True,
     connect_args={
         "options": "-c statement_timeout=60000",

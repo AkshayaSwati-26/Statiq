@@ -60,36 +60,112 @@ TLS_MIN_VERSION         = "TLSv1.3"
 COOKIE_SECURE           = FORCE_HTTPS
 COOKIE_HTTPONLY         = True
 COOKIE_SAMESITE         = "strict"    # CSRF protection
-COOKIE_DOMAIN           = os.environ.get("COOKIE_DOMAIN", "localhost")
+COOKIE_DOMAIN           = os.environ.get("COOKIE_DOMAIN", None)
 
 # ── SQL SAFETY ─────────────────────────────────────────────────────────────────
 # Allowlisted table names and column names for dynamic query building.
 # If a name is not in these sets, the query is rejected — even if parameterized.
+# Fixed allowlist corrected to match actual DB table & view names
 ALLOWED_TABLES = frozenset({
-    "plfs_person", "plfs_household",
-    "hces_person", "hces_household",
-    "nsso_rounds",
+    # Base survey tables
+    "plfs_person",
+    "hces_health_hh",
+    "hces_health_members",
+    "hces_health_hosp",
+    # Privacy-safe API views (these are what NL queries use)
+    "api_plfs_person",
+    "api_hces_members",
+    "api_hces_hosp",
+    # Materialized views
+    "mv_lfpr_by_state",
+    "mv_unemployment_rate",
+    "mv_hosp_rate",
 })
 ALLOWED_COLUMNS = frozenset({
-    "state_code", "district_code", "sector", "age", "sex",
-    "usual_activity_status", "multiplier", "survey_year",
-    "nic_2008_code", "nco_2004_code", "consumption_expenditure",
-    "household_size", "religion", "social_group",
+    "state_name", "state_code", "district_code", "sector", "sector_label",
+    "age", "age_group", "sex", "gender", "gender_label",
+    "education_label", "activity_label", "employment_status",
+    "in_labour_force", "is_employed", "working_age",
+    "multiplier", "survey_year", "round_no",
+    "usual_activity_status", "nic_2008_code", "nco_2004_code",
+    "consumption_expenditure", "household_size",
+    "religion_label", "social_label", "hh_type_label",
+    "umce", "ins_premium",
+    "hospitalised", "hosp_times", "chronic_ailment", "ailment_15d",
+    "insurance_label", "vaccine_received",
+    "ailment_label", "institution_label", "stay_days",
+    "total_expense", "reimbursed", "out_of_pocket", "finance_label",
+    # Aggregation aliases allowed in GROUP BY / SELECT
+    "weighted_population", "weighted_pop", "weighted_lf", "weighted_emp",
+    "weighted_hosp", "lfpr_pct", "wpr_pct", "hosp_rate_pct",
+    "unemployment_rate", "sample_n",
 })
 MAX_QUERY_LIMIT         = 500         # hard cap — no query returns more than 500 rows
 MAX_SQL_LENGTH          = 4096        # reject absurdly long SQL from the NL agent
 
 # ── DATA PRIVACY ──────────────────────────────────────────────────────────────
-# Minimum cell size for any aggregation result.
-# If a group has fewer than MIN_CELL_SIZE respondents, suppress the result.
-# This prevents re-identification of individuals from small groups.
+# Default minimum cell size. Admin can override in the admin_settings DB table.
+# get_min_cell_size() returns the live DB value (with this as fallback).
 MIN_CELL_SIZE           = 30
 
-# Columns that must NEVER appear in API output under any scope
+
+_global_engine = None
+
+def _get_engine():
+    global _global_engine
+    if _global_engine is None:
+        import sqlalchemy as sa
+        import os
+        _global_engine = sa.create_engine(
+            os.environ.get("DATABASE_URL", "postgresql+psycopg2://statiq:statiq123@localhost:5432/statiq"),
+            pool_size=10,
+            max_overflow=10,
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": 2},
+        )
+    return _global_engine
+
+def get_min_cell_size() -> int:
+    """
+    Fetch the dynamic cell suppression threshold from DB.
+    Falls back to the hardcoded default (30) if the DB is unavailable.
+    """
+    try:
+        from sqlalchemy import text as _text
+        with _get_engine().connect() as _conn:
+            val = _conn.execute(_text(
+                "SELECT value FROM admin_settings WHERE key = 'min_cell_size' LIMIT 1"
+            )).scalar()
+            if val is not None:
+                return int(val)
+    except Exception:
+        pass
+    return MIN_CELL_SIZE
+
+
+# Columns that must NEVER appear in API output under any scope (static defaults)
+# Dynamic additions come from survey_metadata_columns WHERE is_masked = TRUE
 ALWAYS_MASKED_COLUMNS   = frozenset({
     "household_id", "person_id", "fsu_serial_no",
     "second_stage_stratum", "sample_hhd_no",
 })
+
+
+def get_masked_columns() -> frozenset:
+    """
+    Merge static ALWAYS_MASKED_COLUMNS with admin-toggled is_masked columns from DB.
+    """
+    extra: set = set()
+    try:
+        from sqlalchemy import text as _text
+        with _get_engine().connect() as _conn:
+            rows = _conn.execute(_text(
+                "SELECT column_name FROM survey_metadata_columns WHERE is_masked = TRUE"
+            )).fetchall()
+            extra = {r[0] for r in rows}
+    except Exception:
+        pass
+    return ALWAYS_MASKED_COLUMNS | extra
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # Strict allowlist — no wildcard ever in production

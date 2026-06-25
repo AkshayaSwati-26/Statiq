@@ -12,7 +12,7 @@ export default function EmptyState({ title, message, buttonLabel, buttonPath }) 
         <div style={{ position:'absolute', top:-1, left:-1, width:8, height:8, borderTop:'1px solid var(--cyan)', borderLeft:'1px solid var(--cyan)' }}></div>
         <div style={{ position:'absolute', bottom:-1, right:-1, width:8, height:8, borderBottom:'1px solid var(--cyan)', borderRight:'1px solid var(--cyan)' }}></div>
       </div>
-      <div className="label-xs" style={{ color:'var(--amber)', marginBottom:8 }}>// {title?.toUpperCase()}</div>
+      <div className="label-xs" style={{ color:'var(--amber)', marginBottom:8 }}>{title?.toUpperCase()}</div>
       <div className="coord" style={{ maxWidth:320, marginBottom:24, color:'var(--text-2)', lineHeight:1.8 }}>{message}</div>
       {buttonLabel && (
         <button onClick={() => navigate(buttonPath)} className="iris-btn iris-btn-cyan">

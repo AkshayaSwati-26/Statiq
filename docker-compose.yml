@@ -198,11 +198,14 @@ services:
       - OLLAMA_HOST=http://ollama:11434
       - JWT_SECRET=test-secret-at-least-32-chars-long!!
       - RSA_PRIVATE_KEY_PATH=keys/private.pem
+      - SMTP_USERNAME=af2373001@smtp-brevo.com
+      - SMTP_PASSWORD=xsmtpsib-8c1584a0b59c5196b31a14b736669d84827ac460a044202802674c3e2cb51993-vonUWfu7gOM70hf7
       - RSA_PUBLIC_KEY_PATH=keys/public.pem
       - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:3001
       - ALLOWED_HOSTS=localhost,127.0.0.1,api
       - FORCE_HTTPS=false
       - AUDIT_LOG_PATH=/tmp/mospi_api_audit.jsonl
+      - SMTP_FROM_EMAIL=akshayaswatir@gmail.com
     volumes:
       - ./api:/app/api
       - ./security:/app/security

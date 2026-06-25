@@ -104,6 +104,10 @@ def hash_password(password: str) -> str:
     validate_password_strength(password)
     return _ph.hash(password)
 
+def hash_otp(otp: str) -> str:
+    """Hash an OTP without enforcing strong password rules."""
+    return _ph.hash(otp)
+
 
 def verify_password(plain: str, hashed: str) -> bool:
     """

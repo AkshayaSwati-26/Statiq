@@ -66,12 +66,6 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
         setIsProcessingPayment(false)
         return
       }
-    } else if (paymentMethod === 'netbank') {
-      if (!selectedBank) {
-        setPaymentError('// ERROR: Please select an active net banking institution.')
-        setIsProcessingPayment(false)
-        return
-      }
     }
 
     // Process payment simulation
@@ -103,7 +97,7 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
       if (!USE_MOCK_UPLOAD) {
         try {
           const res = await axios.post(
-            'http://localhost:8000/v1/auth/upgrade',
+            '/v1/auth/upgrade',
             {},
             { withCredentials: true }
           )
@@ -346,8 +340,7 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
             <div style={{ display: 'flex', gap: 2, background: 'rgba(0,0,0,0.2)', padding: 3, marginBottom: 20 }}>
               {[
                 { id: 'card', label: '💳 Credit/Debit' },
-                { id: 'upi', label: '📱 UPI QR' },
-                { id: 'netbank', label: '🏦 Net Banking' }
+                { id: 'upi', label: '📱 UPI QR' }
               ].map(method => (
                 <button
                   key={method.id}
@@ -436,51 +429,41 @@ export default function PremiumUpgradeModal({ isOpen, onClose }) {
               )}
 
               {paymentMethod === 'upi' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', background: '#f4f6fb', borderRadius: 8 }}>
                   <div style={{
                     background: '#fff',
-                    padding: 12,
-                    border: '1px solid rgba(34, 211, 238, 0.4)',
-                    boxShadow: '0 0 15px rgba(34, 211, 238, 0.2)',
-                    marginBottom: 12,
+                    padding: 16,
+                    borderRadius: 16,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    marginBottom: 16,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                   }}>
-                    <div style={{ width: 120, height: 120, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                      <div style={{ width: 100, height: 100, border: '4px double #22d3ee', display: 'flex', flexWrap: 'wrap' }}>
-                        {Array.from({ length: 9 }).map((_, i) => (
-                          <div key={i} style={{ width: 33, height: 33, border: '1px solid rgba(34,211,238,0.25)', background: (i % 2 === 0 || i === 7) ? '#22d3ee' : 'transparent' }} />
-                        ))}
+                    <div style={{ position: 'relative', width: 140, height: 140, marginBottom: 12 }}>
+                      <img 
+                        src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=upi://pay?pa=sanjanasenthilkumar15@oksbi" 
+                        alt="UPI QR Code" 
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                      <div style={{ 
+                        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                        background: '#fff', padding: 3, borderRadius: '50%', width: 32, height: 32,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      }}>
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                          <path fill="#4285F4" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                          <path fill="#34A853" d="M11 16.5l-4.5-4.5 1.41-1.41L11 13.67l6.09-6.09L18.5 9l-7.5 7.5z"/>
+                        </svg>
                       </div>
-                      <div style={{ position: 'absolute', width: 28, height: 28, background: '#fff', border: '2px solid #22d3ee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#010812', fontWeight: 900 }}>UPI</div>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#475569', letterSpacing: '0.02em' }}>
+                      UPI ID: sanjanasenthilkumar15@oksbi
                     </div>
                   </div>
-                  <div style={{ fontSize: 10, color: 'rgba(148, 163, 184, 0.8)', textAlign: 'center', lineHeight: '1.5em' }}>
-                    Scan this QR code using any UPI app (BHIM, Google Pay, PhonePe, Paytm)<br />
-                    <span style={{ color: '#22d3ee', fontWeight: 700 }}>Simulated payment auto-resolves after scanning</span>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'netbank' && (
-                <div>
-                  <label style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 10 }}>SELECT YOUR BANK</label>
-                  <select 
-                    value={selectedBank}
-                    onChange={e => setSelectedBank(e.target.value)}
-                    className="iris-input"
-                    style={{ width: '100%', fontSize: 12, padding: '10px 12px', background: 'rgba(1, 8, 18, 0.8)' }}
-                  >
-                    <option value="">-- Choose Bank --</option>
-                    <option value="sbi">State Bank of India</option>
-                    <option value="hdfc">HDFC Bank</option>
-                    <option value="icici">ICICI Bank</option>
-                    <option value="axis">Axis Bank</option>
-                    <option value="kotak">Kotak Mahindra Bank</option>
-                  </select>
-                  <div style={{ fontSize: 10, color: 'rgba(148, 163, 184, 0.7)', marginTop: 12, lineHeight: '1.5em' }}>
-                    You will be redirected to the bank's secure authorization portal.
+                  
+                  <div style={{ fontSize: 14, color: '#475569', textAlign: 'center', marginBottom: 8 }}>
+                    Scan to pay with any UPI app
                   </div>
                 </div>
               )}

@@ -79,11 +79,11 @@ async def test_dynamic_csv_upload_flow(client, admin_headers):
     files = {"file": ("employment_dataset.csv", csv_buffer, "text/csv")}
     
     # 2. Upload the CSV file - must fail if not admin
-    resp = await client.post("/upload", files=files)
+    resp = await client.post("/v1/upload", files=files)
     assert resp.status_code == 401 # Unauthenticated
 
     # Upload with admin headers - returns 400 since manual ingestion is disabled
-    resp = await client.post("/upload", files=files, headers=admin_headers)
+    resp = await client.post("/v1/upload", files=files, headers=admin_headers)
     assert resp.status_code == 400
     assert resp.json()["detail"] == "Manual ingestion is disabled."
 
@@ -92,11 +92,11 @@ async def test_dynamic_csv_upload_flow(client, admin_headers):
 async def test_virtual_upload_flow(client, auth_headers, public_headers):
     # Test virtual HCES load - Free user (public) must get 403
     files = {"file": ("hces.csv", b"", "text/csv")}
-    resp = await client.post("/upload", files=files, headers=public_headers)
+    resp = await client.post("/v1/upload", files=files, headers=public_headers)
     assert resp.status_code == 403
 
     # Premium/Research user must succeed
-    resp = await client.post("/upload", files=files, headers=auth_headers)
+    resp = await client.post("/v1/upload", files=files, headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "success"
@@ -105,7 +105,7 @@ async def test_virtual_upload_flow(client, auth_headers, public_headers):
 
     # Test virtual PLFS load - Free/Public user must succeed
     files = {"file": ("plfs.csv", b"", "text/csv")}
-    resp = await client.post("/upload", files=files, headers=public_headers)
+    resp = await client.post("/v1/upload", files=files, headers=public_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "success"

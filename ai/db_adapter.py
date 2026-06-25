@@ -25,7 +25,7 @@ class AIContextRepository:
             return None
 
     def get_metadata_registry(self, survey_id: str = None):
-        query = "SELECT table_name, column_name, data_type, description, sample_values FROM metadata_registry"
+        query = "SELECT survey_id, table_name, column_name, data_type, description, sample_values FROM metadata_registry"
         params = {}
         if survey_id:
             query += " WHERE survey_id = :survey_id"

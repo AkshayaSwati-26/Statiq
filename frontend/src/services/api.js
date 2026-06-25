@@ -5,7 +5,7 @@ import {
 } from '../utils/mockData'
 import { getErrorMessage } from '../utils/errors'
 
-const BASE = 'http://localhost:8000'
+const BASE = ''
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
 
 // Axios instance with cookie credentials (backend uses HttpOnly cookies for auth)
@@ -39,7 +39,7 @@ export const uploadDataset = async (file) => {
   form.append('file', file)
 
   try {
-    const res = await api.post('/upload', form, {
+    const res = await api.post('/v1/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return res.data
@@ -69,4 +69,34 @@ export const runBuilderQuery = async (sessionId, filters) => {
     filters,
   })
   return res.data
+}
+
+// ── Direct SQL Query ──────────────────────────────────────────────────────────
+
+export const runSQLQuery = async (sessionId, sql) => {
+  if (USE_MOCK_QUERY) {
+    await wait(1000)
+    return {
+      ...MOCK_QUERY_RESULT,
+      sql,
+      count: MOCK_QUERY_RESULT.data?.length || 0,
+    }
+  }
+  const res = await api.post('/v1/query/sql', {
+    session_id: sessionId,
+    sql,
+    reason: 'User SQL query via STATIQ query workspace',
+  })
+  return res.data
+}
+
+// ── Table Schema (columns for SQL tab) ───────────────────────────────────────
+
+export const getTableColumns = async (tableName) => {
+  try {
+    const res = await api.get(`/v1/query/columns?table=${encodeURIComponent(tableName)}`)
+    return res.data
+  } catch {
+    return { columns: [] }
+  }
 }

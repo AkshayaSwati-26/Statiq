@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { useLang } from '../hooks/useLang'
-import { runNLQuery, runBuilderQuery } from '../services/api'
+import { runNLQuery, runBuilderQuery, runSQLQuery, getTableColumns } from '../services/api'
 import { generateExplanation, getFormula } from '../utils/explainResult'
 import EmptyState          from '../components/common/EmptyState'
 import LoadingSpinner      from '../components/common/LoadingSpinner'
@@ -42,18 +42,53 @@ export default function QueryWorkspace() {
     lastResult, isQuerying, queryError, lastQuery,
   } = useSession()
   const user = useSession(state => state.user)
+  const isFree = user?.scope === 'public'
 
-  const [activeTab,  setActiveTab]  = useState('nl')
-  const [nlQuery,    setNlQuery]    = useState('')
-  const [chartType,  setChartType]  = useState('bar')
+  const [activeTab,    setActiveTab]    = useState(isFree ? 'sql' : 'nl')
+  const [nlQuery,      setNlQuery]      = useState('')
+  const [sqlQuery,     setSqlQuery]     = useState('')
+  const [schemaColumns, setSchemaColumns] = useState([])
+  const [schemaLoading, setSchemaLoading] = useState(false)
+  const [chartType,    setChartType]    = useState('bar')
+  const sqlTextareaRef = useRef(null)
+
+  // Fetch real column names when SQL tab is active
+  const activeTableName = useRef('')
+  useEffect(() => {
+    if (activeTab !== 'sql' || !filename) return
+    // Derive the table name the same way the backend does
+    const tbl = filename
+      .replace(/\.[^.]+$/, '')         // strip extension
+      .replace(/[^a-z0-9]/gi, '_')    // non-alnum → _
+      .toLowerCase()
+      .slice(0, 63)
+    if (tbl === activeTableName.current) return  // already loaded
+    activeTableName.current = tbl
+    setSchemaLoading(true)
+    setSchemaColumns([])
+    getTableColumns(tbl).then(data => {
+      setSchemaColumns(data.columns || [])
+    }).finally(() => setSchemaLoading(false))
+  }, [activeTab, filename])
+
+  // Helper: insert column name at cursor in SQL textarea
+  const insertColumn = (colName) => {
+    const ta = sqlTextareaRef.current
+    if (!ta) { setSqlQuery(q => q + colName); return }
+    const start = ta.selectionStart, end = ta.selectionEnd
+    const newVal = sqlQuery.slice(0, start) + colName + sqlQuery.slice(end)
+    setSqlQuery(newVal)
+    setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + colName.length; ta.focus() }, 0)
+  }
 
   if (!datasetReady) {
+    const isFreeOrResearch = user?.scope !== 'admin';
     return (
       <EmptyState
         title={t('query_no_data')}
-        message={t('query_upload_msg')}
-        buttonLabel={t('query_go_upload')}
-        buttonPath="/ingest"
+        message={isFreeOrResearch ? t('query_select_msg') : t('query_upload_msg')}
+        buttonLabel={isFreeOrResearch ? t('query_go_select') : t('query_go_upload')}
+        buttonPath={isFreeOrResearch ? "/dashboard" : "/ingest"}
       />
     )
   }
@@ -188,11 +223,43 @@ export default function QueryWorkspace() {
     }
   }
 
+  const handleSQLQuery = async () => {
+    if (!sqlQuery.trim()) return
+    setQuerying(true)
+    try {
+      const t0 = performance.now()
+      const result = await runSQLQuery(sessionId, sqlQuery)
+      const t1 = performance.now()
+      const durationMs = Math.round(t1 - t0)
+
+      const normalizedData = (result.data || []).map(row => {
+        const labelKeys = Object.keys(row).filter(k => k.endsWith('_name') || k.endsWith('_label') || k.endsWith('_code') || ['state', 'gender', 'sector', 'name'].includes(k))
+        const valueKey  = Object.keys(row).find(k => !labelKeys.includes(k) && (typeof row[k] === 'number' || !isNaN(parseFloat(row[k]))))
+        return { name: labelKeys.map(k => row[k]).join(' - ') || 'Row', value: valueKey ? parseFloat(row[valueKey]) : 0, ...row }
+      })
+
+      const enrichedResult = {
+        ...result,
+        data: normalizedData,
+        indicator_name: 'SQL RESULT',
+        result_value: result.count != null ? `${result.count} rows` : `${normalizedData.length} rows`,
+        records_analyzed: result.count || normalizedData.length,
+        query_time_ms: durationMs,
+        dataset_used: filename,
+        sql: result.sql || sqlQuery,
+      }
+      setResult(enrichedResult, sqlQuery)
+      setChartType('table')
+    } catch (err) {
+      console.error(err)
+      setQueryError('SQL query failed. Check your syntax and ensure only SELECT statements are used.')
+    }
+  }
+
   const examples = lang === 'hi' ? EXAMPLES_HI : EXAMPLES_EN
-  const isFree = user?.scope === 'public'
 
   return (
-    <div style={{ maxWidth:1000, display:'flex', flexDirection:'column', gap:20 }}>
+    <div style={{ maxWidth:1000, width: '100%', display:'flex', flexDirection:'column', gap:20 }}>
 
       {/* Header */}
       <div className="a-iris" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -216,14 +283,15 @@ export default function QueryWorkspace() {
       {/* Mode tabs */}
       <div style={{ display:'flex', gap:2, background:'var(--ink-2)', padding:3, width:'fit-content' }} className="a-iris d1">
         {[
-          { id:'nl',      label: lang === 'hi' ? '✦ सामान्य भाषा' : '✦ Natural Language' },
-          { id:'builder', label: (lang === 'hi' ? '⊞ प्रश्न बिल्डर' : '⊞ Query Builder') + (isFree ? ' 🔒' : '') },
-        ].map(tab => (
+          { id:'nl',      label: (lang === 'hi' ? '✦ सामान्य भाषा' : '✦ NL') },
+          { id:'sql',     label: '⟨/⟩ SQL' },
+          { id:'builder', label: (lang === 'hi' ? '⊞ प्रश्न बिल्डर' : '⊞ Query Builder') },
+        ].filter(tab => !isFree || tab.id === 'sql').map(tab => (
           <button
             key={tab.id}
             onClick={() => {
-              if (tab.id === 'builder' && isFree) {
-                alert('Visual Query Builder is a Premium Feature. Please upgrade to Premium Tier using the button in the sidebar to unlock advanced visual queries!')
+              if ((tab.id === 'builder' || tab.id === 'nl') && isFree) {
+                alert('This feature requires Research or Premium tier. Please upgrade using the button in the sidebar.')
                 return
               }
               setActiveTab(tab.id)
@@ -331,6 +399,140 @@ export default function QueryWorkspace() {
           </div>
         </div>
       )}
+
+      {/* SQL Query panel */}
+      {activeTab === 'sql' && (() => {
+        const tbl = filename?.replace(/\.[^.]+$/, '').replace(/[^a-z0-9]/gi, '_').toLowerCase().slice(0, 63) || 'dataset'
+        const textCols = schemaColumns.map(c => c.name)
+        const firstStr  = textCols.find(c => schemaColumns.find(sc => sc.name === c)?.type?.includes('char') || schemaColumns.find(sc => sc.name === c)?.type?.includes('text'))
+        const firstNum  = textCols.find(c => { const t = schemaColumns.find(sc => sc.name === c)?.type || ''; return t.includes('int') || t.includes('numeric') || t.includes('double') || t.includes('real') || t.includes('float') })
+        const groupCol  = textCols.find(c => ['state_name','sector_label','gender_label','age_group','activity_label'].includes(c)) || firstStr || textCols[0]
+        const numCol    = textCols.find(c => ['multiplier','age','is_employed','in_labour_force'].includes(c)) || firstNum || textCols[1]
+        const sqlExamples = [
+          `SELECT * FROM ${tbl} LIMIT 100`,
+          groupCol && `SELECT ${groupCol}, COUNT(*) as count\nFROM ${tbl}\nGROUP BY ${groupCol}\nORDER BY count DESC\nLIMIT 20`,
+          groupCol && numCol && `SELECT ${groupCol}, AVG(${numCol}) as avg_val\nFROM ${tbl}\nGROUP BY ${groupCol}\nORDER BY avg_val DESC`,
+        ].filter(Boolean)
+
+        return (
+          <div className="panel a-iris d1" style={{ overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{
+              padding:'14px 20px', borderBottom:'1px solid var(--rim-2)',
+              background:'var(--ink-2)', display:'flex', alignItems:'center', gap:10,
+            }}>
+              <div style={{ width:3, height:20, background:'var(--green)' }}></div>
+              <div style={{ flex:1 }}>
+                <span className="label-sm" style={{ color:'var(--green)', fontSize:12, display:'block' }}>DIRECT SQL QUERY</span>
+                <span className="coord" style={{ color:'var(--text-3)', fontSize:9 }}>SELECT-only · Safety validated · All queries are audit-logged</span>
+              </div>
+              <code style={{ fontSize:11, color:'var(--cyan)', fontFamily:"'DM Mono',monospace", background:'var(--surface)', border:'1px solid var(--rim-2)', padding:'3px 8px' }}>
+                {tbl}
+              </code>
+            </div>
+
+            <div style={{ display:'flex', gap:0 }}>
+              {/* Schema browser sidebar */}
+              <div style={{
+                width:200, flexShrink:0, borderRight:'1px solid var(--rim-2)',
+                background:'var(--ink)', maxHeight:420, overflowY:'auto',
+              }}>
+                <div className="coord" style={{ padding:'10px 12px', fontSize:9, color:'var(--text-4)', borderBottom:'1px solid var(--rim-2)', position:'sticky', top:0, background:'var(--ink)' }}>
+                  SCHEMA · {schemaLoading ? 'LOADING…' : `${schemaColumns.length} COLS`}
+                </div>
+                {schemaLoading && (
+                  <div style={{ padding:12, textAlign:'center' }}>
+                    <div style={{ width:16, height:16, border:'2px solid var(--green)', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto' }}></div>
+                  </div>
+                )}
+                {schemaColumns.map(col => {
+                  const isNum = col.type?.includes('int') || col.type?.includes('numeric') || col.type?.includes('double') || col.type?.includes('real')
+                  return (
+                    <div
+                      key={col.name}
+                      onClick={() => insertColumn(col.name)}
+                      style={{
+                        padding:'7px 12px', cursor:'pointer',
+                        borderBottom:'1px solid var(--rim)',
+                        transition:'background 0.1s',
+                        display:'flex', justifyContent:'space-between', alignItems:'center',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--ink-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: isNum ? 'var(--cyan)' : 'var(--text-1)', wordBreak:'break-all' }}>{col.name}</span>
+                      <span style={{ fontSize:9, color:'var(--text-4)', fontFamily:"'Space Mono',monospace", marginLeft:4, flexShrink:0 }}>
+                        {col.type?.replace('character varying', 'varchar').replace('double precision','float').slice(0,8)}
+                      </span>
+                    </div>
+                  )
+                })}
+                {!schemaLoading && schemaColumns.length === 0 && (
+                  <div className="coord" style={{ padding:12, fontSize:10, color:'var(--text-4)' }}>No columns found</div>
+                )}
+              </div>
+
+              {/* Right: editor + examples */}
+              <div style={{ flex:1, padding:20, display:'flex', flexDirection:'column', gap:12 }}>
+                {/* SQL textarea */}
+                <textarea
+                  ref={sqlTextareaRef}
+                  value={sqlQuery}
+                  onChange={e => setSqlQuery(e.target.value)}
+                  onKeyDown={e => { if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); handleSQLQuery() } }}
+                  placeholder={`SELECT *\nFROM ${tbl}\nLIMIT 100`}
+                  className="iris-input"
+                  style={{
+                    width:'100%', minHeight:180, resize:'vertical',
+                    fontFamily:"'DM Mono','Space Mono',monospace",
+                    fontSize:13, lineHeight:1.8, padding:'14px 16px',
+                    boxSizing:'border-box', color:'var(--text-0)',
+                  }}
+                  spellCheck={false}
+                />
+
+                {/* Quick examples */}
+                <div>
+                  <div className="coord" style={{ fontSize:9, color:'var(--text-4)', marginBottom:6 }}>// QUICK EXAMPLES — CLICK TO LOAD</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                    {sqlExamples.map((ex, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSqlQuery(ex)}
+                        style={{
+                          fontFamily:"'DM Mono',monospace", fontSize:10, textAlign:'left',
+                          color:'var(--text-3)', background:'var(--ink)',
+                          border:'1px solid var(--rim-2)', padding:'7px 12px',
+                          cursor:'pointer', transition:'all 0.15s', borderRadius:2,
+                          whiteSpace:'pre', overflow:'hidden', textOverflow:'ellipsis',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor='var(--green)'; e.currentTarget.style.color='var(--green)' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor='var(--rim-2)'; e.currentTarget.style.color='var(--text-3)' }}
+                      >
+                        {ex.split('\n')[0]}{ex.includes('\n') ? ' …' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                  <button
+                    onClick={handleSQLQuery}
+                    disabled={isQuerying || !sqlQuery.trim()}
+                    className="iris-btn"
+                    style={{ fontSize:13, padding:'11px 24px', background:'var(--green)', borderColor:'var(--green)', color:'#000', fontWeight:700 }}
+                  >
+                    {isQuerying ? '⟳ Running…' : '⟨/⟩ Run SQL'}
+                  </button>
+                  <span className="coord" style={{ fontSize:9, color:'var(--text-4)' }}>
+                    Ctrl+Enter to run · SELECT only · No DDL/DML
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Builder tab */}
       {activeTab === 'builder' && (

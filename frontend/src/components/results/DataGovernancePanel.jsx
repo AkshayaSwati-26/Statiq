@@ -29,7 +29,7 @@ export default function DataGovernancePanel({ result }) {
           padding:'20px 24px',
         }}>
           <div className="label-xs" style={{ color:'var(--cyan)', marginBottom:10, fontSize:11 }}>
-            // {t('result_constraint')}
+            {t('result_constraint')}
           </div>
           <p style={{
             fontFamily:"'DM Mono',monospace",
@@ -89,7 +89,7 @@ export default function DataGovernancePanel({ result }) {
           padding:'20px 24px',
         }}>
           <div className="label-xs" style={{ color:'var(--text-3)', marginBottom:12, fontSize:11 }}>
-            // {t('result_explain')}
+            {t('result_explain')}
           </div>
           <p style={{
             fontFamily:"'DM Mono',monospace",

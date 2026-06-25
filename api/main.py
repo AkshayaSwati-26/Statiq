@@ -100,7 +100,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins     = ALLOWED_ORIGINS,
     allow_credentials = True,
-    allow_methods     = ["GET", "POST"],   # only what we actually use
+    allow_methods     = ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers     = ["Authorization", "Content-Type", "X-Request-ID"],
     expose_headers    = ["X-RateLimit-Limit", "X-RateLimit-Remaining",
                          "X-RateLimit-Reset", "X-Response-Time-Ms"],
@@ -109,13 +109,17 @@ app.add_middleware(
 
 # ── ROUTERS ────────────────────────────────────────────────────────────────────
 try:
-    from api.routers import auth, indicators, query, metadata_router, relationship_router, suggestions_router
+    from api.routers import (
+        auth, indicators, query, metadata_router,
+        relationship_router, suggestions_router, admin_router
+    )
     app.include_router(auth.router)
     app.include_router(indicators.router)
     app.include_router(query.router)
     app.include_router(metadata_router.router)
     app.include_router(relationship_router.router)
     app.include_router(suggestions_router.router)
+    app.include_router(admin_router.router)
 except ImportError as e:
     logger.warning(f"Some routers not yet implemented: {e}")
 

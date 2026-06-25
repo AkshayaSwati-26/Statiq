@@ -9,6 +9,12 @@ import ResultsDashboard from './pages/ResultsDashboard'
 import QueryHistory     from './pages/QueryHistory'
 import ExportsPage      from './pages/ExportsPage'
 import SettingsPage     from './pages/SettingsPage'
+import AdminDatasets    from './pages/AdminDatasets'
+import AdminAuditLogs   from './pages/AdminAuditLogs'
+import AdminUsers       from './pages/AdminUsers'
+import AdminUserManagement from './pages/AdminUserManagement'
+import AdminSensitivity from './pages/AdminSensitivity'
+import DatasetExplorer from './pages/DatasetExplorer'
 
 export default function App() {
   const { isDark } = useTheme()
@@ -18,14 +24,21 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<AppLayout />}>
-            <Route path="/"          element={<Navigate to="/dashboard" />} />
-            <Route path="/dashboard" element={<DashboardHome />} />
-            <Route path="/ingest"    element={<DataIngestion />} />
-            <Route path="/query"     element={<QueryWorkspace />} />
-            <Route path="/results"   element={<ResultsDashboard />} />
-            <Route path="/history"   element={<QueryHistory />} />
-            <Route path="/exports"   element={<ExportsPage />} />
-            <Route path="/settings"  element={<SettingsPage />} />
+            <Route path="/"                   element={<Navigate to="/dashboard" />} />
+            <Route path="/dashboard"          element={<DashboardHome />} />
+            <Route path="/ingest"             element={<DataIngestion />} />
+            <Route path="/query"              element={<QueryWorkspace />} />
+            <Route path="/results"            element={<ResultsDashboard />} />
+            <Route path="/history"            element={<QueryHistory />} />
+            <Route path="/exports"            element={<ExportsPage />} />
+            <Route path="/settings"           element={<SettingsPage />} />
+            <Route path="/admin/datasets"     element={<AdminDatasets />} />
+            <Route path="/admin/audit-logs"   element={<AdminAuditLogs />} />
+            <Route path="/admin/users"        element={<AdminUsers />} />
+            <Route path="/admin/registrations" element={<AdminUserManagement />} />
+            <Route path="/admin/sensitivity"  element={<AdminSensitivity />} />
+            <Route path="/datasets/:id/explore" element={<DatasetExplorer />} />
+            <Route path="/datasets/explore"     element={<DatasetExplorer />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -31,7 +31,7 @@ from security.auth import (
 )
 from security.audit import log_auth_event, log_security_event
 from security.rate_limiter import _get_client_ip
-from security.validators import TokenRequest, APIKeyCreateRequest, SignupRequest
+from security.validators import TokenRequest, APIKeyCreateRequest, SignupRequest, VerifyOtpRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/auth", tags=["authentication"])
@@ -226,10 +226,7 @@ async def register(
                 detail="Invalid administrator invitation passcode"
             )
 
-    # 3. Generate unique user_id
-    user_id = _generate_unique_user_id(email)
-
-    # 4. Hash the password (also runs password strength validation)
+    # 3. Hash the password (also runs password strength validation)
     try:
         password_hash = hash_password(body.password)
     except ValueError as e:
@@ -238,9 +235,10 @@ async def register(
             detail=str(e)
         )
 
-    # 5. Insert new user into database
+    # 4. Insert directly into users
     try:
         with engine.begin() as conn:
+            user_id = _generate_unique_user_id(email)
             conn.execute(
                 text("""
                     INSERT INTO users (user_id, password_hash, scope, is_active, email, created_at, updated_at)
@@ -375,13 +373,12 @@ async def login(
     password_hash = user["password_hash"] if user else DUMMY_HASH
     password_valid = verify_password(body.password, password_hash)
 
-    # 4. Reject if user doesn't exist, password wrong, or account inactive
     if not user or not password_valid or not user.get("is_active", False):
+        # Normal failure path
         count = record_failed_attempt(user_id)
         record_failed_attempt(ip_hash)
         log_auth_event("login_failure", user_id, ip_hash,
                        f"attempt {count}/{5}")
-        # Same error message regardless of reason — prevents user enumeration
         raise HTTPException(
             status_code=401,
             detail="Invalid credentials"
@@ -414,6 +411,7 @@ async def login(
         scope      = scope,
         expires_in = ACCESS_TOKEN_EXPIRE_MIN * 60,
     )
+
 
 
 @router.post("/logout", response_model=LogoutResponse)

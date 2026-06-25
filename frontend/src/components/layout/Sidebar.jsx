@@ -90,14 +90,14 @@ export default function Sidebar() {
           </div>
           <div>
             <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:15, color:'var(--text-0)', letterSpacing:'0.08em' }} className="a-flicker">
-              IRIS
+              STATIQ
             </div>
             <div className="label-xs" style={{ fontSize:8, letterSpacing:'0.18em', color:'var(--text-3)' }}>
               INTELLIGENCE PLATFORM
             </div>
           </div>
         </div>
-        <div className="coord" style={{ color:'var(--text-4)' }}>SYS // MoSPI-SIP-v2.1</div>
+        <div className="coord" style={{ color:'var(--text-4)' }}>SYS // StatIQ</div>
       </div>
 
       {/* Language switcher */}
@@ -147,43 +147,96 @@ export default function Sidebar() {
               <span className="status-dot status-off"></span>
               <span className="label-xs" style={{ fontSize:9 }}>{t('no_dataset').toUpperCase()}</span>
             </div>
-            <div className="coord">UPLOAD TO INITIALISE</div>
+            <div className="coord">{user?.scope === 'admin' ? 'UPLOAD TO INITIALISE' : 'SELECT DATASET'}</div>
           </div>
         )}
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex:1, padding:'8px 0' }}>
-        {filteredNav.map(item => (
-          <NavLink key={item.path} to={item.path} style={{ display:'block', textDecoration:'none' }}>
-            {({ isActive }) => (
-              <div style={{
-                display:'flex', alignItems:'center', gap:10,
-                padding:'11px 16px',
-                borderLeft: isActive ? '2px solid var(--amber)' : '2px solid transparent',
-                background: isActive ? 'var(--amber-glow)' : 'transparent',
-                transition:'all 0.15s', cursor:'pointer',
-              }}>
-                <span className="coord" style={{ width:18, color: isActive ? 'var(--amber)' : 'var(--text-4)', fontSize:9 }}>
-                  {item.code}
-                </span>
-                <svg viewBox="0 0 16 16" fill="none" stroke={isActive ? 'var(--amber)' : 'var(--text-3)'} strokeWidth="1.2" style={{ width:14, height:14, flexShrink:0 }}>
-                  <path d={item.icon}/>{item.d2 && <path d={item.d2}/>}
-                </svg>
-                <span style={{
-                  fontFamily:"'Space Mono',monospace", fontSize:11,
-                  letterSpacing:'0.1em',
-                  color: isActive ? 'var(--amber)' : 'var(--text-2)',
-                  transition:'color 0.15s',
+      {/* Scrollable Navigation Area */}
+      <div className="sidebar-scroll-area" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
+        {/* Nav */}
+        <nav style={{ padding:'8px 0' }}>
+          {filteredNav.map(item => (
+            <NavLink key={item.path} to={item.path} style={{ display:'block', textDecoration:'none' }}>
+              {({ isActive }) => (
+                <div style={{
+                  display:'flex', alignItems:'center', gap:10,
+                  padding:'11px 16px',
+                  borderLeft: isActive ? '2px solid var(--amber)' : '2px solid transparent',
+                  background: isActive ? 'var(--amber-glow)' : 'transparent',
+                  transition:'all 0.15s', cursor:'pointer',
                 }}>
-                  {t(item.tkey)}
-                </span>
-                {isActive && <span className="status-dot status-warn" style={{ marginLeft:'auto' }}></span>}
-              </div>
-            )}
-          </NavLink>
-        ))}
-      </nav>
+                  <span className="coord" style={{ width:18, color: isActive ? 'var(--amber)' : 'var(--text-4)', fontSize:9 }}>
+                    {item.code}
+                  </span>
+                  <svg viewBox="0 0 16 16" fill="none" stroke={isActive ? 'var(--amber)' : 'var(--text-3)'} strokeWidth="1.2" style={{ width:14, height:14, flexShrink:0 }}>
+                    <path d={item.icon}/>{item.d2 && <path d={item.d2}/>}
+                  </svg>
+                  <span style={{
+                    fontFamily:"'Space Mono',monospace", fontSize:11,
+                    letterSpacing:'0.1em',
+                    color: isActive ? 'var(--amber)' : 'var(--text-2)',
+                    transition:'color 0.15s',
+                  }}>
+                    {t(item.tkey)}
+                  </span>
+                  {isActive && <span className="status-dot status-warn" style={{ marginLeft:'auto' }}></span>}
+                </div>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Admin Console Section — only visible to admin */}
+        {user?.scope === 'admin' && (
+          <div style={{ borderTop:'1px solid var(--rim-2)', paddingTop:6 }}>
+            <div style={{ padding:'8px 16px 4px' }}>
+              <span style={{
+                fontFamily:"'Space Mono',monospace", fontSize:8,
+                letterSpacing:'0.18em', color:'rgba(239,68,68,0.6)',
+                fontWeight:700,
+              }}>ADMIN CONSOLE</span>
+            </div>
+            {[
+              { path:'/admin/datasets',      code:'A1', label:'DATASETS',      icon:'M2 2h12v3H2zM2 6h12v3H2zM2 11h12v3H2z' },
+              { path:'/admin/audit-logs',    code:'A2', label:'AUDIT LOGS',    icon:'M3 2h10v12H3zM6 5h4M6 8h4M6 11h2' },
+              { path:'/admin/users',         code:'A3', label:'USERS',         icon:'M8 8a3 3 0 100-6 3 3 0 000 6zM2 14s1-4 6-4 6 4 6 4' },
+
+              { path:'/admin/sensitivity',   code:'A5', label:'SENSITIVITY',   icon:'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
+            ].map(item => (
+              <NavLink key={item.path} to={item.path} style={{ display:'block', textDecoration:'none' }}>
+                {({ isActive }) => (
+                  <div style={{
+                    display:'flex', alignItems:'center', gap:10,
+                    padding:'9px 16px',
+                    borderLeft: isActive ? '2px solid #ef4444' : '2px solid transparent',
+                    background: isActive ? 'rgba(239,68,68,0.06)' : 'transparent',
+                    transition:'all 0.15s', cursor:'pointer',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(239,68,68,0.03)' }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span style={{ width:18, fontFamily:"'Space Mono',monospace", fontSize:8, color: isActive ? '#ef4444' : 'rgba(239,68,68,0.4)' }}>
+                      {item.code}
+                    </span>
+                    <svg viewBox="0 0 16 16" fill="none" stroke={isActive ? '#ef4444' : 'rgba(239,68,68,0.5)'} strokeWidth="1.2" style={{ width:13, height:13, flexShrink:0 }}>
+                      <path d={item.icon}/>
+                    </svg>
+                    <span style={{
+                      fontFamily:"'Space Mono',monospace", fontSize:10,
+                      letterSpacing:'0.08em',
+                      color: isActive ? '#ef4444' : 'rgba(239,68,68,0.6)',
+                      transition:'color 0.15s',
+                    }}>
+                      {item.label}
+                    </span>
+                  </div>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Subscription Card */}
       <div style={{ padding:'0 16px 12px' }}>
@@ -196,7 +249,7 @@ export default function Sidebar() {
           <span className="status-dot status-live"></span>
           <span className="label-xs" style={{ fontSize:9, color:'var(--green)' }}>ALL SYSTEMS NOMINAL</span>
         </div>
-        <div className="coord" style={{ color:'var(--text-4)' }}>GOV-IN // STATATHON-2025</div>
+        <div className="coord" style={{ color:'var(--text-4)' }}>SYS // StatIQ</div>
         <div className="coord" style={{ color:'var(--text-4)', marginTop:2 }}>TEAM NEXUS // CLEARANCE: L3</div>
       </div>
 

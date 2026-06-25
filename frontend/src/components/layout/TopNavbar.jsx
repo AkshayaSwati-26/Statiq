@@ -34,7 +34,7 @@ export default function TopNavbar() {
       transition:'background 0.3s',
     }}>
       <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-        <span className="coord" style={{ color:'var(--amber)', fontSize:9 }}>IRIS // MoSPI-SIP</span>
+        <span className="coord" style={{ color:'var(--amber)', fontSize:9 }}>StatIQ</span>
         <span className="coord" style={{ color:'var(--text-4)' }}>//</span>
         {datasetReady ? (
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>

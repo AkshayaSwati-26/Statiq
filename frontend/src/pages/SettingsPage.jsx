@@ -104,7 +104,7 @@ export default function SettingsPage() {
           <div>
             <div className="data-val" style={{ fontSize:15, marginBottom:6 }}>{t('settings_theme')}</div>
             <div className="coord" style={{ color:'var(--text-3)' }}>
-              {isDark ? 'Dark Mode — IRIS Terminal' : 'Light Mode — IRIS Clarity'}
+              {isDark ? 'Dark Mode — STATIQ Terminal' : 'Light Mode — STATIQ Clarity'}
             </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
               borderRadius:2, transition:'border-color 0.15s',
             }}>
               <div style={{ background:m.surface, border:'1px solid rgba(0,0,0,0.06)', padding:'8px 12px', marginBottom:10 }}>
-                <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:m.accent, marginBottom:4 }}>// IRIS PLATFORM</div>
+                <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:m.accent, marginBottom:4 }}>// STATIQ PLATFORM</div>
                 <div style={{ display:'flex', gap:4 }}>
                   {[m.accent,'rgba(3,105,161,0.7)','rgba(100,116,139,0.4)'].map((c,i) => (
                     <div key={i} style={{ height:5, flex:1, background:c, borderRadius:1 }}></div>

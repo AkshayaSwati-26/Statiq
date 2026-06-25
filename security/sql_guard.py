@@ -26,6 +26,8 @@ from security.config import (
     MAX_SQL_LENGTH,
     MIN_CELL_SIZE,
     ALWAYS_MASKED_COLUMNS,
+    get_min_cell_size,
+    get_masked_columns,
 )
 
 logger = logging.getLogger(__name__)
@@ -159,13 +161,33 @@ def validate_column_name(column: str) -> str:
 
 def mask_sensitive_columns(rows: list[dict]) -> list[dict]:
     """
-    Remove ALWAYS_MASKED_COLUMNS from every row before returning to client.
+    Mask sensitive columns from every row before returning to client.
+    Merges static ALWAYS_MASKED_COLUMNS with admin-toggled is_masked columns from DB.
     These columns (household_id, fsu_serial_no etc.) can re-identify individuals.
     """
     if not rows:
         return rows
+    masked = get_masked_columns()
+    
+    import re
+    def _mask_val(val):
+        if val is None: return None
+        s = str(val)
+        if '@' in s:
+            parts = s.split('@', 1)
+            if len(parts[0]) > 2:
+                return parts[0][:2] + "***@" + parts[1]
+            return "***@" + parts[1]
+        elif re.match(r'^\+?\d{8,15}$', s):
+            if len(s) > 4:
+                return '*' * (len(s)-4) + s[-4:]
+            return '***'
+        else:
+            words = s.split(' ')
+            return ' '.join([w[0] + '*' * (len(w)-1) if len(w) > 1 else w for w in words])
+
     return [
-        {k: v for k, v in row.items() if k not in ALWAYS_MASKED_COLUMNS}
+        {k: (_mask_val(v) if k in masked else v) for k, v in row.items()}
         for row in rows
     ]
 
@@ -180,12 +202,14 @@ def enforce_cell_suppression(
     is below MIN_CELL_SIZE — prevents re-identification of individuals
     in small geographic/demographic groups.
 
+    MIN_CELL_SIZE is read dynamically from admin_settings DB (default 30).
     Returns rows with suppressed cells replaced by None and a flag.
     """
+    cell_threshold = get_min_cell_size()
     suppressed = []
     for row in rows:
         pop = row.get(count_col)
-        if pop is not None and float(pop) < MIN_CELL_SIZE:
+        if pop is not None and float(pop) < cell_threshold:
             # Replace all numeric values with None but keep group keys
             new_row = {}
             for k, v in row.items():
@@ -195,7 +219,7 @@ def enforce_cell_suppression(
                     new_row[k] = v
             new_row["_suppressed"] = True
             new_row["_suppression_reason"] = (
-                f"Cell suppressed: respondent count below {MIN_CELL_SIZE}"
+                f"Cell suppressed: respondent count below {cell_threshold}"
             )
             suppressed.append(new_row)
         else:

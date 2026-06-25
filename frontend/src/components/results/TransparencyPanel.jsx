@@ -26,7 +26,7 @@ export default function TransparencyPanel({ result }) {
         {/* Formula — large, prominent */}
         <div>
           <div className="label-xs" style={{ color:'var(--amber)', marginBottom:12, fontSize:11 }}>
-            // {t('result_formula')}
+            {t('result_formula')}
           </div>
           <div style={{
             background:'var(--amber-glow)',
@@ -61,7 +61,7 @@ export default function TransparencyPanel({ result }) {
         {/* Traceability — clean grid */}
         <div>
           <div className="label-xs" style={{ color:'var(--text-3)', marginBottom:12, fontSize:11 }}>
-            // {t('result_trace')}
+            {t('result_trace')}
           </div>
           <div style={{
             display:'grid',
@@ -96,7 +96,7 @@ export default function TransparencyPanel({ result }) {
             }}
           >
             <div className="label-xs" style={{ color:'var(--text-3)', fontSize:11 }}>
-              // {t('result_sql')}
+              {t('result_sql')}
             </div>
             <div style={{ flex:1, height:1, background:'var(--rim-2)' }}></div>
             <span style={{
@@ -134,7 +134,7 @@ export default function TransparencyPanel({ result }) {
         {/* How generated — readable paragraph */}
         <div>
           <div className="label-xs" style={{ color:'var(--text-3)', marginBottom:12, fontSize:11 }}>
-            // {t('result_how')}
+            {t('result_how')}
           </div>
           <div style={{
             background:'var(--cyan-glow)',

@@ -59,8 +59,8 @@ class StatIQDB:
         self.engine = sa.create_engine(
             db_url,
             poolclass=QueuePool,
-            pool_size=10,
-            max_overflow=5,
+            pool_size=20,
+            max_overflow=10,
             pool_pre_ping=True,
             connect_args={
                 "options": "-c statement_timeout=60000",
@@ -289,14 +289,16 @@ class StatIQDB:
             'round':        'round_no',
         }
 
-        df_to_load = df.copy()
+        # Use the original dataframe reference to save memory
+        df_to_load = df
+        
         # Rename columns that exist in the dataframe, but avoid duplicate target names
         rename_dict = {}
         for k, v in COLUMN_MAPPING.items():
             if k in df_to_load.columns and v not in df_to_load.columns:
                 rename_dict[k] = v
         if rename_dict:
-            df_to_load = df_to_load.rename(columns=rename_dict)
+            df_to_load.rename(columns=rename_dict, inplace=True)
 
         with self.engine.connect() as conn:
             table_exists = conn.execute(text(
@@ -316,7 +318,12 @@ class StatIQDB:
                 ), {"t": table_name})
                 db_columns = [row[0] for row in result]
                 load_columns = [c for c in df_to_load.columns if c in db_columns]
-                df_to_load = df_to_load[load_columns]
+                
+                # Drop columns we don't need inplace to save memory
+                drop_cols = [c for c in df_to_load.columns if c not in load_columns]
+                if drop_cols:
+                    df_to_load.drop(columns=drop_cols, inplace=True)
+                    
                 log.info(f"[DB] Filtered to {len(load_columns)} matching columns for table {table_name}")
             else:
                 log.info(f"[DB] Table {table_name} does not exist. Creating empty structure first.")
@@ -336,7 +343,7 @@ class StatIQDB:
         Streams data through StringIO without writing temp files.
         Automatically casts float columns to integers when the DB expects smallint/int/bigint.
         """
-        df = df.copy()
+        # NO df.copy() here to save massive amounts of memory!
 
         # Query DB column types to fix float→int casting issues
         # (pandas stores int columns with NaN as float, e.g. 1.0 instead of 1)
@@ -360,16 +367,22 @@ class StatIQDB:
         col_list = ", ".join(f'"{c}"' for c in columns)
         copy_sql = f"COPY {table_name} ({col_list}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE, NULL '')"
 
-        # Stream DataFrame to CSV in memory
-        buffer = io.StringIO()
-        df.to_csv(buffer, index=False, header=True)
-        buffer.seek(0)
-
         # Use raw psycopg2 connection for COPY
         raw_conn = self.engine.raw_connection()
         try:
             cur = raw_conn.cursor()
-            cur.copy_expert(copy_sql, buffer)
+            
+            # Stream DataFrame to CSV in memory IN CHUNKS to prevent massive StringIO memory spikes!
+            # 50,000 rows limits the string buffer to ~50-100MB instead of 2GB!
+            chunk_size = 50_000
+            for i in range(0, len(df), chunk_size):
+                chunk = df.iloc[i:i+chunk_size]
+                buffer = io.StringIO()
+                chunk.to_csv(buffer, index=False, header=True)
+                buffer.seek(0)
+                cur.copy_expert(copy_sql, buffer)
+                buffer.close() # Explicitly free the memory block immediately!
+                
             raw_conn.commit()
             log.info(f"[DB] COPY loaded {len(df):,} rows into {table_name}")
         except Exception as e:

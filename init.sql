@@ -288,39 +288,41 @@ CREATE TABLE IF NOT EXISTS survey_metadata_dictionary (
 
 CREATE TABLE IF NOT EXISTS survey_metadata_columns (
     id SERIAL PRIMARY KEY,
-    survey_id VARCHAR(20) NOT NULL,
-    table_name VARCHAR(60) NOT NULL,
-    column_name VARCHAR(60) NOT NULL,
-    data_type VARCHAR(30) NOT NULL,
+    survey_id   TEXT NOT NULL,
+    table_name  TEXT NOT NULL,
+    column_name TEXT NOT NULL,
+    data_type   TEXT NOT NULL,
     description TEXT,
-    is_sensitive BOOLEAN DEFAULT FALSE
+    is_sensitive BOOLEAN DEFAULT FALSE,
+    is_masked    BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT uq_survey_meta_col UNIQUE (survey_id, table_name, column_name)
 );
 
 CREATE TABLE IF NOT EXISTS survey_metadata_samples (
     id SERIAL PRIMARY KEY,
-    survey_id VARCHAR(20) NOT NULL,
-    table_name VARCHAR(60) NOT NULL,
-    column_name VARCHAR(60) NOT NULL,
+    survey_id    TEXT NOT NULL,
+    table_name   TEXT NOT NULL,
+    column_name  TEXT NOT NULL,
     sample_values JSONB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS survey_metadata_profiles (
     id SERIAL PRIMARY KEY,
-    survey_id VARCHAR(20) NOT NULL,
-    table_name VARCHAR(60) NOT NULL,
-    row_count BIGINT NOT NULL,
+    survey_id    TEXT NOT NULL,
+    table_name   TEXT NOT NULL,
+    row_count    BIGINT NOT NULL,
     column_count INT NOT NULL,
     missing_values BIGINT NOT NULL,
     profile_data JSONB NOT NULL,
-    profiled_at TIMESTAMPTZ DEFAULT NOW()
+    profiled_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS survey_metadata_suggested_queries (
     id SERIAL PRIMARY KEY,
-    survey_id VARCHAR(20) NOT NULL,
-    title VARCHAR(200) NOT NULL,
+    survey_id   TEXT NOT NULL,
+    title       VARCHAR(200) NOT NULL,
     description TEXT,
-    sql_query TEXT NOT NULL
+    sql_query   TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_meta_rel_survey ON survey_metadata_relationships(survey_id);

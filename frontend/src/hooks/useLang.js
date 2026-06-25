@@ -12,7 +12,7 @@ const EN = {
 
   // Dashboard
   dash_title:       'Mission Control',
-  dash_subtitle:    'MoSPI Survey Intelligence Platform',
+  dash_subtitle:    'StatIQ',
   dash_stat1:       'Datasets Ingested',
   dash_stat2:       'Queries Executed',
   dash_stat3:       'Records Processed',
@@ -49,6 +49,8 @@ const EN = {
   query_no_data:    'No Dataset Loaded',
   query_upload_msg: 'Upload a survey dataset before running queries.',
   query_go_upload:  'Upload Dataset',
+  query_select_msg: 'Select a survey dataset from the dashboard before running queries.',
+  query_go_select:  'Select Dataset',
 
   // Results
   result_indicator: 'Indicator',
@@ -159,6 +161,8 @@ const HI = {
   query_no_data:    'कोई डेटासेट नहीं',
   query_upload_msg: 'प्रश्न चलाने से पहले डेटासेट अपलोड करें।',
   query_go_upload:  'डेटासेट अपलोड करें',
+  query_select_msg: 'प्रश्न चलाने से पहले डैशबोर्ड से एक डेटासेट चुनें।',
+  query_go_select:  'डेटासेट चुनें',
 
   // Results
   result_indicator: 'संकेतक',
