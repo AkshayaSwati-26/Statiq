@@ -1,6 +1,7 @@
 <div align="center">
   <h1>🚀 StatIQ / MoSPI Platform</h1>
   <p><b>A Modern, Containerized, and AI-Driven Data Intelligence Platform</b></p>
+  <p><i>Built for STATATHON 2025</i></p>
   
   ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)
   ![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg?style=for-the-badge&logo=docker)
@@ -12,58 +13,63 @@
 
 ---
 
-## 🌟 Vision (Statathon 2025)
-
-Democratize access to India's official statistics so **policymakers, researchers, developers, and students** can derive insights without **technical barriers** — while preserving **privacy, accuracy, and scale.**
+## 🎯 Vision
+Democratize access to India's official statistics so **policymakers, researchers, developers, and students** can derive insights without technical barriers — while preserving **privacy, accuracy, and scale**.
 
 ---
 
-## 🛑 The Problem: Ground Reality Today
+## 🚧 The Core Gap & Ground Reality Today
 
-**Core Gap:** *Open data exists, but there is no unified, intelligent, no-code way to run flexible queries and retrieve insights in a user-friendly, API-ready form.*
+**Core Gap:** Open data exists, but there is no unified, intelligent, no-code way to run flexible queries and retrieve insights in a user-friendly, API-ready form.
 
+Currently, dealing with official data presents several challenges:
 - Survey data is released as **massive CSV/ZIP files**.
-- Deriving insights requires complex **SQL, statistics, and preprocessing**.
-- Policymakers are forced to depend on **delayed static reports**.
-- Developers waste time rebuilding **duplicate data pipelines**.
-- Non-technical users are effectively **locked out**.
+- Deriving insights requires **SQL, statistics, and complex preprocessing**.
+- Policymakers depend on **delayed static reports**.
+- Developers constantly rebuild **duplicate data pipelines**.
+- Non-technical users are completely **locked out**.
 
 ### Why Existing Systems Fail
 
-| Current Approach | The Limitation |
+| Current Approach | Limitation |
 | :--- | :--- |
-| **Raw CSV downloads** | Manual & error-prone |
-| **GB-scale file downloads** | Slow policymaking |
-| **Static dashboards** | No flexibility |
-| **SQL-only access** | Excludes non-technical users |
-| **Fragmented APIs** | No unified access |
-| **No governance layer** | Risk & inefficiency |
+| Raw CSV downloads | Manual & error-prone |
+| GB-scale file downloads | Slow policymaking |
+| Static dashboards | No flexibility |
+| SQL-only access | Excludes non-technical users |
+| Fragmented APIs | No unified access |
+| No governance layer | Risk & inefficiency |
 
 ---
 
-## 💡 The Solution: How StatIQ Addresses the Problem
+## 💡 The StatIQ Solution
 
 StatIQ eliminates bulky file downloads & manual filtering. It saves time, reduces errors, and makes data accessible to non-technical users while offering ready-to-use APIs for developers.
 
-### 🎯 Impact & Feasibility
+### 🇮🇳 National Impact
+- ⏱️ **90% reduction** in analysis time.
+- 📊 Faster, **evidence-based policymaking**.
+- 👥 **Inclusive access** to public data.
+- 🚀 Foundation for **National Data APIs**.
 
-| 🚀 Feasibility | 🛡️ Security & Governance | 🇮🇳 National Impact |
-| :--- | :--- | :--- |
-| • Built on proven open-source technologies<br>• Modular & extensible architecture<br>• Easy integration with existing MoSPI systems<br>• Pilot-ready within hackathon scope | • Role-based access control<br>• Query validation & throttling<br>• API key management<br>• Full audit logs<br>• Privacy-by-design architecture | • ⏱️ 90% reduction in analysis time<br>• 📊 Faster, evidence-based policymaking<br>• 👥 Inclusive access to public data<br>• 🚀 Foundation for National Data APIs |
+### 🛡️ Security & Governance
+- **Role-based access control** ensuring data privacy.
+- **Query validation & throttling** for platform stability.
+- **API key management** for external integrations.
+- **Full audit logs** tracking all interactions.
+- **Privacy-by-design architecture**.
 
----
-
-## 📖 Project Overview
-
-**StatIQ** (MoSPI Platform) is a comprehensive, full-stack data platform designed for scalable data ingestion, secure processing, and intelligent analysis. By combining a high-performance backend, time-series optimized databases, and an integrated local AI engine, StatIQ offers a complete ecosystem for managing vast datasets without relying on external cloud APIs.
-
-Whether you are performing complex ETL tasks, running AI-driven queries over local data, or managing user access securely, this platform provides a **simple, clear, and professional** infrastructure.
+### ⚙️ Feasibility
+- Built entirely on **proven open-source technologies**.
+- **Modular & extensible architecture**.
+- Designed for **easy integration** with existing MoSPI systems.
+- Pilot-ready within the hackathon scope.
 
 ---
 
 ## 🏗️ System Architecture
 
-Our platform follows a modular, microservices-oriented approach where each component operates inside its own isolated Docker container.
+Our platform follows a modular, microservices-oriented approach where each component operates securely inside its own isolated Docker container.
 
 ```mermaid
 graph TD
@@ -111,26 +117,14 @@ graph TD
 
 ---
 
-## ✨ Core Functionalities
+## ✨ Core Platform Functionalities
 
-### 🛡️ Security & Authentication
-- **Role-Based Access Control (RBAC):** Granular permissions for admins and standard users.
-- **JWT & RSA Encryption:** Secure token-based authentication backed by robust asymmetric key pairs.
-- **Comprehensive Audit Logging:** Track every sensitive action and security event within the platform.
-
-### 🔌 API & Application Logic
-- **High-Performance Routing:** Built on Python's FastAPI, ensuring lightning-fast, asynchronous request handling.
-- **NL-SQL Caching:** Natural Language to SQL conversions are intelligently cached in Redis to drastically reduce AI overhead and latency.
-- **Automated Mailing Service:** SMTP integration via Brevo for reliable system alerts and user notifications.
-
-### 🧠 Integrated Artificial Intelligence
-- **Local LLM Engine:** Utilizes Ollama directly inside the cluster, meaning zero data leaves your environment for inference tasks.
-- **Context-Aware Analytics:** The AI layers can natively query your Postgres databases and translate natural language directly into actionable data insights.
-
-### 🗄️ Data Storage & Orchestration
-- **Time-Series Optimization:** PostgreSQL paired with TimescaleDB easily handles millions of chronological data points.
-- **Object Storage (Data Lake):** S3-compatible MinIO handles raw files, Parquet datasets, and unstructured binary assets.
-- **Automated ETL Pipelines:** Apache Airflow automates the ingestion, cleaning, and staging of incoming data streams.
+- 🔌 **High-Performance Routing:** Built on Python's FastAPI, ensuring lightning-fast, asynchronous request handling.
+- 🤖 **NL-SQL Caching:** Natural Language to SQL conversions are intelligently cached in Redis to drastically reduce AI overhead and latency.
+- 🧠 **Local LLM Engine:** Utilizes Ollama directly inside the cluster, meaning zero data leaves your environment for inference tasks.
+- 🗄️ **Time-Series Optimization:** PostgreSQL paired with TimescaleDB easily handles millions of chronological data points.
+- 📦 **Object Storage (Data Lake):** S3-compatible MinIO handles raw files, Parquet datasets, and unstructured binary assets.
+- 🔄 **Automated ETL Pipelines:** Apache Airflow automates the ingestion, cleaning, and staging of incoming data streams.
 
 ---
 
@@ -155,122 +149,92 @@ mospi-platform/
 
 ---
 
-## 💻 System Requirements
+## 🚀 Comprehensive Setup & Installation Guide
 
-**Hardware Requirements**
-*   **RAM**: 8GB Minimum 🚀 *(16GB Recommended due to AI & Airflow memory usage)*
-*   **CPU**: 4 Cores Minimum
-*   **Storage**: 20GB+ Free Space (SSD highly recommended)
+### Step 1: Verify System Requirements
+Before proceeding, ensure your host machine meets the following specifications:
+*   **RAM**: Minimum 8GB *(16GB is highly recommended to comfortably run Airflow and the Local AI models simultaneously)*
+*   **CPU**: Minimum 4 Cores
+*   **Storage**: 20GB of free SSD space
+*   **Software**: 
+    *   Docker Engine (v20.10 or higher)
+    *   Docker Compose (v2.0 or higher)
+    *   Git installed on your system
 
-**Software Prerequisites**
-*   🐳 [Docker (v20.10+)](https://docs.docker.com/get-docker/) & Docker Compose
-*   🌿 [Git](https://git-scm.com/downloads)
-
----
-
-## 🚀 Detailed Setup & Installation Guide
-
-Follow these step-by-step instructions to deploy the entire unified stack on your local machine using Docker. 
-
-### Step 1: Clone the Repository
-Open your terminal and clone the project to your local workspace:
+### Step 2: Clone the Repository
+Open your terminal and clone the repository to your local machine:
 ```bash
 git clone <repository_url> mospi-platform
 cd mospi-platform
 ```
 
-### Step 2: Environment Configuration
-The platform relies on `.env` variables for secure credentials and configurations. 
-1. Copy the sample environment file:
+### Step 3: Configure Environment Variables
+The platform relies on a `.env` file to manage secrets and configurations.
+1. Create a copy of the provided template:
    ```bash
    cp .env.example .env
    ```
-2. Open the `.env` file in your editor and configure the necessary keys (e.g., `JWT_SECRET`, Database credentials, or SMTP configurations).
+2. Open the newly created `.env` file in your preferred code editor.
+3. Review and update critical variables (e.g., `JWT_SECRET`, database credentials, SMTP details) as required for your deployment environment.
 
-### Step 3: Launch the Docker Containers
-The entire stack is containerized. Start the platform by downloading the images and booting the services in detached mode:
+### Step 4: Initialize and Start the Platform
+Once configured, use Docker Compose to download, build, and start all microservices:
 ```bash
 docker-compose up -d
 ```
-> ⏳ *Note: The initial setup may take 5-15 minutes depending on your internet connection, as it pulls heavy images (PostgreSQL, Airflow, Ollama) and builds the local API and Frontend containers.*
+> ⏳ **Important Note:** The initial execution may take **5 to 15 minutes**. Docker needs to download several heavy images (including PostgreSQL, Airflow, and the Ollama AI engine) and build the local FastAPI and React containers. Grab a coffee! ☕
 
-### Step 4: Verify the Deployment
-Ensure that all services started successfully without crashing:
+### Step 5: Verify Deployment Status
+Check that all containers have spun up correctly:
 ```bash
 docker-compose ps
 ```
-> ✅ *Check that all services display a state of `Up` or `healthy`.* If a service fails, you can inspect it with `docker-compose logs -f <service_name>`.
+You should see all containers mapped to their respective ports with a status of `Up` or `healthy`. If a container repeatedly restarts, you can inspect its logs using:
+```bash
+docker-compose logs -f <service_name>
+```
 
 ---
 
 ## 🌐 Services & Endpoints Directory
 
-Once the stack is running successfully, you can access the various services at these local endpoints:
+Once the stack is successfully running, you can access the various interconnected services through your web browser:
 
-| Service | Address | Default Credentials / Purpose |
-|:---|:---|:---|
-| 🎨 **Frontend UI** | `http://localhost:3000` | User-facing dashboard |
-| 🔌 **Backend API** | `http://localhost:8000` | Core API Layer (Swagger UI: `/docs`) |
-| 🐘 **pgAdmin Viewer** | `http://localhost:5050` | `admin@statiq.com` / `admin` |
-| 🪣 **MinIO Console**| `http://localhost:9001` | `statiq` / `statiq123` |
-| ⏱️ **Airflow UI** | `http://localhost:8080` | `admin` / `admin` |
-| 🤖 **Ollama Engine** | `http://localhost:11434`| Local AI Model Engine API |
-| 🗄️ **TimescaleDB** | `localhost:5434` | `statiq` / `statiq123` (Database: `statiq`) |
-| ⚡ **Redis Cache** | `localhost:6379` | Cache & Rate Limiting |
-
----
-
-## 🛠️ Local Development Guide (Optional)
-
-If you wish to modify code and debug outside of the Docker network, use the following manual setup instructions:
-
-### Backend (Python API)
-> 🐍 *Requires Python 3.10+*
-```bash
-# Navigate to project root and install dependencies
-pip install -r requirements.txt
-
-# Run the FastAPI server locally
-uvicorn api.main:app --reload --port 8000
-```
-
-### Frontend (React + Vite)
-> 🟢 *Requires Node.js (v18+)*
-```bash
-# Navigate to the frontend folder
-cd frontend
-
-# Install Node modules
-npm install
-
-# Start the Vite development server
-npm run dev
-```
+| Service | Local Address | Default Credentials | Purpose |
+|:---|:---|:---|:---|
+| 🎨 **Frontend UI** | `http://localhost:3000` | - | Main user-facing application |
+| 🔌 **Backend API** | `http://localhost:8000` | - | Core API routing (Swagger UI: `/docs`) |
+| 🐘 **pgAdmin Viewer** | `http://localhost:5050` | `admin@statiq.com` / `admin` | Visual DB management |
+| 🪣 **MinIO Console**| `http://localhost:9001` | `statiq` / `statiq123` | Manage S3 object storage |
+| ⏱️ **Airflow UI** | `http://localhost:8080` | `admin` / `admin` | Monitor ETL workflows and DAGs |
+| 🤖 **Ollama Engine** | `http://localhost:11434`| - | API for the local AI models |
+| 🗄️ **TimescaleDB** | `localhost:5434` | `statiq` / `statiq123` | Direct SQL access (DB: `statiq`) |
+| ⚡ **Redis Cache** | `localhost:6379` | - | Internal rate limiting & cache |
 
 ---
 
-## ⚙️ Lifecycle Management
+## ⚙️ Lifecycle Management Commands
 
 Master your local Docker environment with these essential commands:
 
-*   **Stop Safely**: Shut down all containers without losing data.
+*   **Graceful Shutdown** (Stops all running services without deleting data): 
     ```bash
     docker-compose down
     ```
-*   **Wipe All Data** ⚠️ *(Warning: Deletes database, cache, and MinIO volumes permanently!)*: 
+*   **Complete System Reset** ⚠️ *(Warning: Permanently deletes all database, cache, and MinIO volumes)*: 
     ```bash
     docker-compose down -v
     ```
-*   **Restart Specific Service** *(e.g., apply a quick configuration change)*: 
+*   **Restart a Single Service** *(Example: Applying a frontend code change)*: 
     ```bash
     docker-compose restart frontend
     ```
-*   **Rebuild Image After Code Changes**: If you update the `Dockerfile` or `requirements.txt`:
+*   **Force Rebuild a Service** *(Example: Rebuilding the API after altering `requirements.txt`)*: 
     ```bash
     docker-compose up -d --build api
     ```
 
 ---
 <div align="center">
-  <i>Built with ❤️ for Statathon 2025 – Modern data engineering and AI analytics.</i>
+  <i>Built with ❤️ for STATATHON 2025. Empowering evidence-based policymaking through accessible data.</i>
 </div>
